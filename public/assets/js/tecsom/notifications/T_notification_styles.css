@@ -1,0 +1,52 @@
+.t-notification{
+    margin-bottom: 10px;
+}
+
+.t-notf-body{
+    background: #1e1e1e;
+    border-radius: 12px;
+    padding: 10px;
+    justify-content: space-between;
+    align-items: center;
+    display: flex;
+    width: 320px;
+}
+.t-notf-imgage-container{
+    display: block;
+}
+.t-notf-image{
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background-color:#fff;
+    margin-right: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    pointer-events: none;
+}
+
+.t-notf-image svg{
+   transform: scale(0.55);
+}
+
+.t-notf-text{
+    color: white;
+}
+.t-notf-close{
+    margin-left: 7px;
+    display: flex;
+    cursor: pointer;
+}
+.t-notf-close svg{
+    transform: scale(0.5);
+}
+
+#Tnotifications{
+    position: fixed;
+    top: 100px;
+    right: 40px;
+    display: flex;
+    flex-direction: column;
+    z-index: 1;
+}

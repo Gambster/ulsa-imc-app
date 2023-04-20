@@ -1,0 +1,125 @@
+<script>
+
+const tresholdLoadMore = 5;
+
+async function load_More( tableElement, path, wrapperScroll , search=""){
+
+    if(search.length < 3){
+
+        search = undefined;
+
+    }
+
+$(wrapperScroll).unbind();
+const formData = {  };
+
+formData["search"] = search;
+
+
+const lastElementData = tableElement.row(':last').data();
+
+const ajaxPath = path;
+
+if( !lastElementData ){
+
+    formData.init = true;
+
+}
+else{
+
+    formData.init = false;
+    formData.uuid = lastElementData.uuid;
+
+}
+
+$( wrapperScroll ).find('.bottom').removeClass('hide');
+
+const result = await asyncPostAjax( ajaxPath,formData );
+
+const addVentas = result;
+
+console.log( result.tableData )
+
+tableElement.rows.add( result.tableData ).draw();
+
+$( wrapperScroll ).find('.bottom').addClass('hide');
+
+if( result.loadMore ){
+
+    if( !isOverflown( wrapperScroll ) ){
+
+        console.log('no overflown')
+        
+        load_More( tableElement, ajaxPath, wrapperScroll );
+
+    }
+    else{
+
+        $(wrapperScroll).on('scroll', async function() {
+
+            if ($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight - tresholdLoadMore) {
+                
+                await load_More( tableElement, ajaxPath, wrapperScroll );
+                
+
+            }
+
+        });
+
+    }
+
+}
+
+}
+
+async function searchAsync (word) {
+
+    //$( "#clienteSearch" ).prop( "disabled", true );
+    // $("#searchSpinner").show();
+
+    const searchWord = word.trim();
+
+    await load_More($("#proveedores-table").DataTable(),"/proveedores/loadtable", $('#table-proveedor-wrapper')[0],searchWord);
+
+    $('#proveedoresSearch').on('keyup', e => {
+        
+    const previousValue = $(e.target).data('previousValue');
+    const currentValue = $(e.target).val().trim();
+
+    if(currentValue.length < 3 && previousValue.length >= currentValue.length){
+
+        $("#proveedores-table").DataTable().clear().draw();
+        $("#proveedoresSearch").unbind('keyup');
+        searchAsync("");
+
+    }else if(currentValue.length >= 3){
+
+        $("#proveedores-table").DataTable().clear().draw();
+        $("#proveedoresSearch").unbind('keyup');
+        searchAsync(currentValue);
+
+    }
+
+    });
+
+}
+
+    
+function removePayment(e){
+       
+       let li = $(e.target).closest('li'); // get reference by using closest
+       let nodes = Array.from( li.closest('ul').children() ); // get array
+       const index = li.index();
+       console.log(index)
+      var pay = $(e.delegateTarget).data("payment-edit");
+       const payedit = [...pay] // clona el objeto para no acceder a su pointer y modificar ambos
+   
+       payedit.splice(index,1)
+       $(e.delegateTarget).data("payment-edit",payedit)
+       $(li).remove();
+       if(nodes.length -1 == 0){
+           $(e.delegateTarget).append($('<li  class="list-group-item paymentMethodsEmpty">').text("No se han añadido métodos de pago"));
+       }
+   }
+
+</script>

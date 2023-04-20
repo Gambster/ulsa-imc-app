@@ -1,0 +1,329 @@
+
+<script>
+
+    
+    $('#atras-btn').click( function(){
+
+        const url = window.location.href;
+        const hostName = get_hostname( url );
+
+        window.location.replace(`${hostName}/productos`);
+
+    });
+
+    $('#save-image-btn').on( 'click', async function(){
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const uuidProduct = urlParams.get('uuid'); 
+
+        const imgs = myDropzone.getAcceptedFiles();
+        const imgsArray = [];
+        let counter = 0;
+
+        if(imgs.length){
+
+            for await ( const img of  imgs ){  
+            
+                const fileName = img.upload.filename;
+                const reader = new FileReader();
+                const options = {
+
+                    maxSizeMB: 1,
+                    maxWidthOrHeight: 1920,
+
+                };
+
+                await imageCompression( img, options ).then( async function( compressedFile ) {
+
+                    await reader.readAsDataURL( compressedFile );
+
+
+                });
+
+
+                reader.onload = await async function( e ){
+
+                    counter++;
+
+                    const image = reader.result;
+
+                    imgsArray.push({
+
+                        image: image,
+                        fileName: fileName,
+
+                    });
+
+                    if( counter === imgs.length ){
+
+                        console.log({imgsArray,counter})
+                        console.log(imgsArray.length  )
+
+                        const button = new loadingButton($("#save-image-btn"),"...Guardando")
+                        button.start();
+                        const result = await asyncPostAjax( '/uploadImage', { imgsArray, uuidProduct })
+                    
+                        const res = result.Response
+                        showNotification( res.Type, res.Message );
+                        if(res.Type == "success"){
+                            location.reload()
+
+                        }
+                        
+                        button.stop();
+            
+
+                    }
+                    
+
+
+                };
+                
+
+            }
+
+        }else{
+            showNotification("error","No se añadieron imagenes")
+        }
+
+    });
+
+  
+
+    $('#add-image-btn').on( 'click', function(){
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const uuidProduct = urlParams.get('uuid'); 
+
+        postAjax( '/verifyImageStorage', { uuidProduct }, ({ correo }) => {
+
+            $('#add-image-modal').modal('show');
+
+        }, ( rej )=>{
+
+            const { Message, InputsError, Type, data } = rej.Response;
+            showNotification( Type, Message );
+            
+
+        });
+
+    });
+
+    $('#remove-image-btn').on( 'click',async function(e){
+        console.log("removing")
+        const button = e.target
+        const LoadingButton = new loadingButton($(button),"Eliminando");
+        LoadingButton.start();
+        const { nombre } = $('#remove-image-modal').modal().data();
+        const urlParams = new URLSearchParams(window.location.search);
+        const uuidProduct = urlParams.get('uuid'); 
+               
+        const result = await asyncPostAjax('/removeImage',{ uuidProduct, nombre })
+        const res = result.Response
+
+        showNotification(res.Type,res.Message)
+        if(res.Type == "success"){
+            console.log("recargar");
+            location.reload()
+
+            
+        }
+
+        // const res = result.Response
+        // 
+        // setTimeout(() => {
+        //     location.reload()
+        // }, 1000);
+
+
+    });
+
+    $('#remove-image').on( 'click', function(){
+        $('.carousel').carousel('pause')
+      
+        const nombre = $('.carousel-item.active').attr('meta-name');
+        
+        $('#remove-image-modal').modal('show');
+        $('#nombre-producto-rem').text( nombre );
+
+        $('#remove-image-modal').modal().data({ nombre });
+
+    });
+
+$( document ).ready( function(){
+
+    const productoData = JSON.parse( '<%- JSON.stringify( productoData ) %>' );
+    const { imageurls } = productoData;
+    console.log(productData)
+    let carouselObj = '';
+
+    
+    
+    for( const imgObject of ( imageurls || [] ) ){
+
+        const { filename, url } = imgObject;
+
+        carouselObj += `<a data-fslightbox="gallery" href="${url}" class="carousel-item"  meta-name="${filename}">
+                            <img src="${url}" class="d-block w-100 img-carrusel" alt="${filename}">
+                        </a>`;
+
+    }
+
+    if( ( imageurls || [] ).length === 0 ){
+
+        carouselObj = `<div  class="carousel-item">
+                            <img src="../public/assets/images/other/no-image.jpeg" class="d-block w-100 img-carrusel" alt="...">
+                        </div>`;
+
+        $('#remove-image').remove();
+
+    }
+
+    $('#img-container-carousel').html( carouselObj );
+    $('.carousel-item:eq(0)').addClass( 'active' );
+
+    //
+    $('#unidadMedidaSelect').select2({
+
+    placeholder: 'Seleccionar',
+    dropdownParent: $('#productModalEditor'),
+    language: {
+    noResults: function(){
+
+        return 'No se ha encontrado unidad de medida, debes darla de alta en configuración';
+
+    },
+    searching: function() {
+        return "Buscando...";
+    },
+    inputTooShort: function( e ){
+        var t = e.minimum - e.input.length;
+
+        n = "Escribe " + t + " o más caracteres";
+
+        return n
+    },
+    loadingMore: function () {
+        return "Cargando más resultados...";
+    },
+    },
+    escapeMarkup: function (markup) {
+        return markup;
+    },
+    ajax: {
+    url: '/getDataSelect',
+    dataType: 'json',
+    type: "POST",
+    delay: 250,
+    headers: {
+        "CSRF-Token": Cookies.get("XSRF-TOKEN"),
+    },
+    data: function (params) {
+
+        return {
+            q: params.term, // searchBox string 
+            page: params.page, // si no existe cargó por primera vez, si sí, es que no es la primera vez que se carga.
+            last: $( "#unidadMedidaSelect" ).data( "last"),
+            queryString: 'configuracion/general/unidadesMedida',
+            arrayText: [ 'nombre' ],
+            
+        };
+
+    },
+    processResults: function (data) {
+        $( "#unidadMedidaSelect" ).data( "last", data.last );
+        return data.select2;
+    },
+    cache: true,
+    }
+
+
+    });
+
+    refreshFsLightbox();
+
+
+});
+
+const productData = JSON.parse(`<%- JSON.stringify(productoData)%>`)
+
+$("#editProduct").click(function(){
+    console.log(productData)
+    $("#descripcionInput").val(productData.descripcion)
+    $("#numeroParteInput").val(productData.numeroParte)
+    $("#unidadMedidaInput").val(productData.unidadMedidaNombre)
+    $("#referenciaInput").val(productData.referencia)
+    $("#numeroAlternoInput").val(productData.numeroAlterno)
+
+    const UnidadMedida = new Option(productData.unidadMedidaNombre,productData.unidadMedida,false,true)
+
+    $("#unidadMedidaSelect").append(UnidadMedida).trigger("change")
+
+    $("#productModalEditor").modal("show");
+
+})
+
+
+$("#editProductForm").submit(async function(e){
+    e.preventDefault();
+    const urlParams = new URLSearchParams(window.location.search);
+    const uuidProduct = urlParams.get('uuid'); 
+
+    const serializedData = $( this ).serializeArray();
+    var formData = new Object()
+
+
+    
+    formData['uid'] = uuidProduct;
+
+    for( const field of serializedData ){
+
+        const { name, value } = field;
+
+        formData[ name ] = value;
+
+    }
+    formData["unidadMedidaNombre"] = $('#unidadMedidaSelect').select2('data')[0].text
+    
+
+    const result = await asyncPostAjax("/productos/update",formData);
+        const resp = result.Response;
+               
+        if(resp.Type == "success"){
+          
+            console.log("success")
+            $("#productModalEditor").modal("hide")
+            setTimeout(() => {
+                location.reload()
+            }, 1500);
+            
+
+        }
+        showNotification(resp.Type,resp.Message);
+    
+
+})
+
+const source = document.getElementById("add-image-modal");
+source.addEventListener("dragenter", (event) => {
+  
+    $("#dragMessage").fadeIn(100)
+
+});
+
+source.addEventListener("dragleave", (event) => {
+    $("#dragMessage").fadeOut(200)
+});
+
+source.addEventListener("drop", (event) => {
+    $("#dragMessage").fadeOut(200)
+
+})
+
+
+
+
+
+
+
+</script>

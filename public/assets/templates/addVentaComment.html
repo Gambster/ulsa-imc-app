@@ -1,0 +1,260 @@
+<div class="modal fade" id="comentario-solicitud" tabindex="-1" aria-labelledby="infoSolicitud" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Comentarios</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body row">
+               <div class="comm col-md-8">
+                    <form class="row g-3" id="addComment">
+                        <div class="col-md-12">
+                            <label for="comentario-solicitud-text" class="form-label">Comentario de uso interno sobre la solicitud.</label>
+                            <div style="position: relative;">
+                                <textarea class="form-control" id="comentario-solicitud-text"></textarea>
+                                <span type="file" class="material-icons-outlined " id="attatchFileComment">
+                                    attach_file
+                                </span>
+                                <input type="file" id="commentFile" class="d-none">
+                            </div>
+                        </div>
+                    </form>
+                    <div class="row">
+                        <div class="col-12 py-3 justify-content-end d-flex">
+                            <button type="submit" form="addComment" class="btn btn-success">Guardar</button>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="list-group listaComentarios"></div>
+                        </div>
+                    </div>
+               </div>
+               <div class="fls col-md-4">
+                <label for="comentario-solicitud-text" class="form-label">Archivos adjuntos.</label>
+                <ul class="list-group" id="attatchedFiles">
+                </ul>
+               </div>
+            </div>
+            <div class="modal-footer"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #attatchFileComment{
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        cursor: pointer;    
+    }
+</style>
+
+<script>
+
+$("#attatchFileComment").click(function(e){
+    $("#commentFile").click();
+})
+
+$("#commentFile").on("change",function(e){
+    
+    if(e.delegateTarget.files[0]){
+        console.log("si hay");
+        console.log(e.delegateTarget.files[0])
+        $("#addComment").data({file:true});
+        $("#comentario-solicitud-text").val(`${e.delegateTarget.files[0].name} ${e.delegateTarget.files[0].size/1000} kb`)
+        $("#comentario-solicitud-text").prop("disabled",true);
+
+    }else{
+        $("#addComment").data({file:false});
+        $("#comentario-solicitud-text").prop("disabled",false);
+        $("#comentario-solicitud-text").val("");
+
+    }
+})
+
+$("#addComment").submit(async function(e){
+    e.preventDefault();
+
+    const buttonDom = e.originalEvent.submitter; //Botón que  detono el evento submit
+    const button = new loadingButton($(buttonDom),"...Enviando") ;
+    button.start();
+
+    const isDocument = $("#addComment").data("file");
+
+    if(isDocument){
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const uuidVenta = getParam('uuid');
+        const file = $("#commentFile")[0].files[0];
+        
+
+        const formObj = {
+            uuidVenta: uuidVenta,
+            comentario: "",
+            paso: "<%= paso %>",
+            type: "document", //type: document
+            fileName: file.name,
+            fileData:  await convertBase64(file),
+        }
+
+        const {Response} = await asyncPostAjax( '/registroComentario' , formObj);
+        console.log(Response)
+        showNotification(Response.Type,Response.Message);
+        button.stop();
+
+        if (Response.Type == "success"){
+            cargarComentarios(uuidVenta);
+        }
+        $("#addComment").data({file:undefined});
+
+
+    }else{
+        
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const uuidVenta = getParam('uuid')
+
+        const formObj = {
+            uuidVenta: uuidVenta,
+            comentario: $('#comentario-solicitud-text').val(),
+            paso: "<%= paso %>",
+            type: "Message", //type: document
+            fileName: "",
+        }
+
+        const {Response} = await asyncPostAjax( '/registroComentario' , formObj);
+        console.log(Response)
+        showNotification(Response.Type,Response.Message);
+        button.stop();
+
+        if (Response.Type == "success"){
+            cargarComentarios(uuidVenta);
+        }
+    }
+    
+
+});
+
+
+const cargarComentarios = async ( uuidVenta ) => {
+
+    const res = await asyncPostAjax( '/getComentarios', { uuidVenta });
+    console.log({res})
+
+    var listaFinal = "";
+    var elementList = "";
+    $("#attatchedFiles").empty();
+
+    res.forEach( commentObject => {
+        console.log({commentObject})
+        var dateFormat= new Date( (commentObject.timestamp._seconds) * 1000 );
+
+        const comentario = commentObject.comentario;
+        const paso = commentObject.paso;
+        const Nombre = commentObject.user.Nombre;
+        const commentID = commentObject.commentUID;
+        const tipo = commentObject.type;
+        
+
+        const fecha = dateFormat.getDate()+
+                    "/"+(dateFormat.getMonth()+1)+
+                    "/"+dateFormat.getFullYear()+
+                    " "+dateFormat.getHours()+
+                    ":"+dateFormat.getMinutes()+
+                    ":"+dateFormat.getSeconds();
+        
+
+
+        if(tipo == "Message"){
+            elementList = `
+
+            <a  href="" class="removerEste list-group-item list-group-item-action" aria-current="true">
+                <div class="d-flex w-100 justify-content-between">
+                    <p class="mb-1">${comentario}</p>
+                    <small></small>
+                </div>
+                <div class="d-flex justify-content-between"> 
+                    <small class="mb-1">${Nombre}</small>
+                    <small class="userCom">${ fecha }</small>
+                </div>
+                <span class="badge badge-style-light rounded-pill badge-info">${paso}</span>
+            </a>
+            `;
+
+        }else if(tipo == "document"){
+                const icon = getIcon(comentario); 
+
+                elementList = `
+
+            <a  href="/commetfile/?ventaid=${uuidVenta}&commentid=${commentID}" target="_blank" style="overflow-wrap: anywhere;" class="removerEste list-group-item list-group-item-action messageDocument" aria-current="true">
+                <div class="d-flex w-100 justify-content-between">
+                    <div class="mb-1">
+                        <div style="align-items:center;" class="d-flex">
+                            <span class="material-icons-outlined ${icon.class}" >
+                                ${icon.icon}
+                            </span>
+                            <span>
+                                <strong>Archivo adjunto (${icon.extension})</strong>
+                            </span>
+                        </div>
+                    </div>
+                    <small></small>
+                </div>
+                <div style="background: #f4f7fa; border-radius:12px; padding:10px" >
+                    <small>
+                        ${comentario}
+                    </small>
+                </div>
+                <div class="d-flex justify-content-between"> 
+                    <small class="mb-1">${Nombre}</small>
+                    <small class="userCom">${ fecha }</small>
+                </div>
+                <span class="badge badge-style-light rounded-pill badge-info">${paso}</span>
+            </a>
+            `;
+
+            const fileDom = `
+            <li class="list-group-item" style="text-overflow: ellipsis; overflow:hidden;">
+                <a href="/commetfile/?ventaid=${uuidVenta}&commentid=${commentID}" target="_blank" title="${comentario}">
+                    <div style="align-items:center;" class="d-flex">
+                        <div>
+                            <span class="material-icons-outlined ${icon.class}" >
+                                ${icon.icon}
+                            </span>
+                        </div>
+                        <div>
+                            ${comentario}
+                        </div>
+                    </div>
+                </a>
+            </li>`;
+            $("#attatchedFiles").append(fileDom);
+        }
+        listaFinal+=  elementList ; 
+
+       
+        
+    });
+
+    $('#comentario-solicitud-text').val('');
+
+    $("#comentario-solicitud-text").prop("disabled",false);
+
+    $('.removerEste').remove();
+
+    $( ".listaComentarios" ).append( listaFinal );
+
+
+
+
+}
+
+
+$("#btnOpcionComentario").click(function(){
+    const uuidVenta = getParam('uuid');
+
+    cargarComentarios ( uuidVenta );
+})
+
+</script>

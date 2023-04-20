@@ -1,0 +1,304 @@
+<script>
+
+    $( '#empresa-pais' ).on( 'change', async function(){
+
+        $( '#empresa-estado' ).empty();
+        const id = $( this ).val();
+
+        if( !id ){
+
+            return;
+
+        }
+
+        loadDataToSelect( '/getEstados', { id }, '#empresa-estado' );
+
+    });
+
+    $( '#edit-empresa-pais' ).on( 'change', async function(){
+
+        $( '#edit-empresa-estado' ).empty();
+        const id = $( this ).val();
+
+        if( !id ){
+
+            return;
+
+        }
+
+        loadDataToSelect( '/getEstados', { id }, '#edit-empresa-estado' );
+
+    });
+
+    
+    /*$( document ).on( 'click', '#proveedores-table > tbody > tr', function(){
+
+        const clickedRowIndex = $(this).index();
+        const url = window.location.href;
+        const hostName = get_hostname( url );
+        const { uuidProveedor } = $('#proveedores-table').DataTable().row( clickedRowIndex ).data();
+        
+        window.location.replace(`${hostName}/proveedores/?uuidProveedor=${uuidProveedor}`);
+
+    });*/
+
+    $("#proveedores-table").on("click",async function(e){
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) )
+
+        const UserRowData = row.data()
+        const target = $(e.target);
+        console.log( UserRowData );
+
+        if(target.prop("tagName") != "I" && target.prop("tagName") != "TH" ){
+            
+            const url = window.location.href;
+            const hostName = get_hostname( url );
+            const { uuidProveedor } = UserRowData;
+        
+            window.location.replace(`${hostName}/proveedores/?uuidProveedor=${uuidProveedor}`);
+            
+            
+        }else{
+            if(target.text() == "edit"){
+                
+                $("#editarProveedor").data("uid",UserRowData.uuidProveedor)
+                $("#edit-paymentMethods").data("payment-edit",UserRowData.payments)
+                console.log( $("#edit-paymentMethods").data("payment-edit"))
+
+                $("#edit-empresa-nombre").val(UserRowData.nombre)
+                $("#edit-empresa-telefono").val(UserRowData.telefono)
+                $("#edit-empresa-extension").val(UserRowData.extension)
+                $("#edit-empresa-email").val(UserRowData.email)
+                $("#edit-empresa-website").val(UserRowData.website)
+                $("#edit-empresa-calle").val(UserRowData.calle)
+                $("#edit-empresa-num-ext").val(UserRowData.numeroExterior)
+                $("#edit-empresa-num-int").val(UserRowData.numeroInterior)
+                $("#edit-empresa-ciudad").val(UserRowData.ciudad)
+
+                $("#edit-empresa-pais").val(UserRowData.paisCode).trigger("change");
+             
+                
+                $( '#edit-empresa-estado' ).empty();
+                const id = $( "#edit-empresa-pais" ).val();
+
+                if( !id ){
+
+                    return;
+
+                }
+
+                await loadDataToSelect( '/getEstados', { id }, '#edit-empresa-estado' );
+                $("#edit-empresa-estado").val(UserRowData.estadoCode).trigger('change')
+
+                if(UserRowData.payments.length != 0){
+                    //$(e.delegateTarget).find(".paymentMethodsEmpty").remove()
+                    $("#edit-paymentMethods").empty()
+                    UserRowData.payments.forEach(payment => {
+                        $("#edit-paymentMethods").append($('<li class="list-group-item">').html(`<div style="display:flex; justify-content:space-between;"><div>${payment.bank} - ${payment.cuenta}</div><div><a class="delete">Eliminar</a></div></div>`));
+                    });
+
+                }
+
+                $("#editarProveedor").modal("show")
+                
+
+            }else if(target.text() == "delete"){
+
+                console.log("delete")    
+                $("#deleteProveedor").modal("show").data({uid:UserRowData.uuidProveedor})
+
+            }
+        }
+
+    })
+
+    $('#nuevo-proveedor-form').submit(async function( e ){
+
+        e.preventDefault();
+        console.log("times")
+        const serializedData = $(this).serializeArray();
+        const empresaObj = {};
+
+        for( const field of serializedData ){
+
+            const { name, value } = field;
+
+            empresaObj[ name ] = value;
+
+        }
+
+        
+        empresaObj[ 'estado' ] = $('#empresa-estado').select2('data')[0] != undefined ? $('#empresa-estado').select2('data')[0].text : "";
+        empresaObj[ 'pais' ] = $('#empresa-estado').select2('data')[0] != undefined ? $('#empresa-pais').select2('data')[0].text : "";
+        
+        empresaObj[ 'payments' ] = $("#paymentMethods").data("payments") ?? [];
+
+       
+        const result = await asyncPostAjax("/uploadProveedor",empresaObj);
+        const resp = result.Response;
+        
+       
+        if(resp.Type == "success"){
+          
+
+
+            
+            $("#nuevoProveedor").modal("hide")
+
+            clearModalAndClose( '#nuevoProveedor', '#nuevo-proveedor-form' ); //si esta limpiando, pero no no esta cerrando
+        }
+        showNotification(resp.Type,resp.Message);
+        
+
+    });
+
+    $("#edit-proveedor-form").submit(async function(e){
+        e.preventDefault();
+
+        const serializedData = $(this).serializeArray();
+        const empresaObj = {};
+
+        for( const field of serializedData ){
+
+            const { name, value } = field;
+
+            empresaObj[ name ] = value;
+
+        }
+
+        empresaObj[ 'estado' ] = $('#edit-empresa-estado').select2('data')[0] != undefined ? $('#edit-empresa-estado').select2('data')[0].text : "";
+        empresaObj[ 'pais' ] = $('#edit-empresa-estado').select2('data')[0] != undefined ? $('#edit-empresa-pais').select2('data')[0].text : "";
+        empresaObj["payments"] = $("#edit-paymentMethods").data("payment-edit")
+
+         
+        const update = {
+        uid: $("#editarProveedor").data("uid"),
+        data: empresaObj
+        }
+        const ajaxPath = "/proveedores/update";
+        const result = await asyncPostAjax(ajaxPath,update);
+        console.log(result)
+        const res = result.Response
+        showNotification(res.Type,res.Message)
+        $("#editarProveedor").modal("hide")
+
+
+    })
+
+    $('#agregar-empleado-btn').click( function(){
+
+        $('#collapse-empleados').collapse("show");
+
+    });
+
+    $( document ).ready( function(){
+
+        const dataPaises = JSON.parse( '<%- JSON.stringify( dataPaises ) %>' );
+
+        loadDataToSelect( false, false, '#empresa-pais', dataPaises )
+
+        loadDataToSelect( false, false, '#edit-empresa-pais', dataPaises )
+
+
+    });
+    
+    $('#Number').on('keyup', function() {
+    var foo = $(this).val().split(" ").join(""); 
+    if (foo.length > 0) {
+        
+            foo = foo.match(new RegExp('.{1,4}', 'g')).join(" ");
+        
+       
+        
+    }
+    $(this).val(foo);
+});
+
+$("#addpayment").click(function(e){
+        const banco = $("#Banco").val() ?? ""
+        const cuenta = $("#Number").val() ?? ""
+
+        const paydata = {
+            bank: banco ?? "", 
+            cuenta: cuenta.replaceAll(" ","") ?? ""
+        }
+        if(paydata.bank != "" && paydata.cuenta != ""){
+            
+
+            var pay = $("#paymentMethods").data("payment-edit") ?? []
+
+            if(pay.find(element => element.cuenta == paydata.cuenta)){
+                showNotification("Error","No se puede añadir el número de cuenta/tarjeta más de una vez")
+            }else{
+                $("#nuevoProveedor").find(".paymentMethodsEmpty").remove();
+                $("#Banco").val("") ;
+                $("#Number").val("");
+                $("#paymentMethods").append($('<li class="list-group-item">').html(`<div style="display:flex; justify-content:space-between;"><div>${paydata.bank} - ${cuenta}</div><div><a class="delete">Eliminar</a></div></div>`));
+                pay.push(paydata)
+                $("#paymentMethods").data("payment-edit",pay);
+            }
+        
+            
+        }
+    })
+
+
+$("#edit-addpayment").click(function(e){
+
+        const banco = $("#edit-Banco").val() ?? ""
+        const cuenta = $("#edit-Number").val() ?? ""
+
+        const paydata = {
+            bank: banco ?? "", 
+            cuenta: cuenta.replaceAll(" ","") ?? ""
+        }
+        if(paydata.bank != "" && paydata.cuenta != ""){
+            
+
+            var pay = $("#edit-paymentMethods").data("payment-edit") ?? []
+            
+
+            if(pay.find(element => element.cuenta == paydata.cuenta)){
+                showNotification("Error","No se puede añadir el número de cuenta/tarjeta más de una vez")
+            }else{
+                $("#editarProveedor").find(".paymentMethodsEmpty").remove();
+                $("#edit-Banco").val("") ;
+                $("#edit-Number").val("");
+                $("#edit-paymentMethods").append($('<li class="list-group-item">').html(`<div style="display:flex; justify-content:space-between;"><div>${paydata.bank} - ${cuenta}</div><div><a class="delete">Eliminar</a></div></div>`));
+                
+                var payedit = [...pay]
+                payedit.push(paydata)
+                $("#edit-paymentMethods").data("payment-edit",payedit)
+            }
+        
+            
+        }
+    })
+
+    
+
+    $("#paymentMethods").on("click",".delete",function(e){
+        removePayment(e)
+    })
+
+    $("#edit-paymentMethods").on("click",".delete",function(e){
+        removePayment(e)
+    })
+
+
+
+    //confirmDelete
+    $("#deleteProveedor .confirmDelete").click(async function(){
+        console.log("Eliminar pa ")
+        const uid = $("#deleteProveedor").modal().data()
+        
+        
+        const result = await asyncPostAjax("/proveedores/delete",uid)
+        const res = result.Response
+        showNotification(res.Type,res.Message)
+        $("#deleteProveedor").modal("hide")
+        
+
+    })
+    
+</script>

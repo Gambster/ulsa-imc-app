@@ -1,0 +1,135 @@
+<script>
+     
+    
+    $("#paymentMethod").select2({
+        dropdownParent: $("#editarProveedor")
+    })
+
+    $('#edit-Number').on('input',function(){
+        const typeSelect = $("#paymentMethod").val()
+        const bankInput = $(this).val()
+
+        if(typeSelect == "clabe"){
+            if(bankInput.length >= 3){
+                const clabe = bankInput.slice(0,3);
+                //console.log({clabe})
+                try{
+                    const bank = getClabe(clabe)
+                    //console.log(`el banco es ${bank.marca}`)
+                    $("#edit-Banco").val(bank.marca)
+
+                    $("#paymentMethod").data({bank})
+
+
+                }catch{
+                    $("#edit-Banco").val("")
+                    $("#paymentMethod").data({"bank":undefined})
+
+                }
+            }else{
+                $("#edit-Banco").val("")
+                $("#bankSelected").val("")
+
+            }
+            
+        }else{
+            //console.log("Es una tarjeta")
+            const FormattedNum = cc_format($("#edit-Number").val())
+            $("#edit-Number").val(FormattedNum)
+        }
+
+    })
+
+
+    $("#paymentMethod").on("change",function(){
+        if( $("#paymentMethod").val() == "clabe"){
+            $("#edit-Number").attr("placeholder","0000 00000 00000 000")
+        }else{
+            $("#edit-Number").attr("placeholder","1234 1234 1234 1234");  
+            const FormattedNum = cc_format($("#edit-Number").val());
+            $("#edit-Number").val(FormattedNum);
+
+        }
+        
+    })
+
+
+
+    $( '#edit-empresa-pais' ).on( 'change', async function(){
+
+        $( '#edit-empresa-estado' ).empty();
+        const id = $( this ).val();
+
+        if( !id ){
+
+            return;
+
+        }
+
+        await loadDataToSelect( '/getEstados', { id }, '#edit-empresa-estado' );
+
+    });
+
+        $("#deleteProveedor .confirmDelete").click(async function(){
+        console.log("Eliminar pa ")
+
+        const Button = new loadingButton( $(this),"...Eliminando" );
+        Button.start()
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid = urlParams.get('uuidProveedor');
+        const result = await asyncPostAjax("/proveedores/delete",{uid})
+        const res = result.Response
+        showNotification(res.Type,res.Message)
+        $("#deleteProveedor").modal("hide")
+        Button.stop()
+
+        window.location.href = "/proveedores"
+
+
+    })
+
+
+    $("#edit-proveedor-form").submit(async function(e){
+        
+        e.preventDefault();
+
+        const serializedData = $(this).serializeArray();
+        const empresaObj = {};
+
+        for( const field of serializedData ){
+
+            const { name, value } = field;
+
+            empresaObj[ name ] = value;
+
+        }
+
+        empresaObj[ 'estado' ] = $('#edit-empresa-estado').select2('data')[0] != undefined ? $('#edit-empresa-estado').select2('data')[0].text : "";
+        empresaObj[ 'pais' ] = $('#edit-empresa-estado').select2('data')[0] != undefined ? $('#edit-empresa-pais').select2('data')[0].text : "";
+        empresaObj["payments"] = $("#edit-paymentMethods").data("payment-edit")
+
+         
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+
+        const update = {
+        uid: urlParams.get('uuidProveedor'),
+        data: empresaObj
+        }
+        const ajaxPath = "/proveedores/update";
+        const result = await asyncPostAjax(ajaxPath,update);
+        console.log(result)
+        const res = result.Response
+        showNotification(res.Type,res.Message)
+        $("#editarProveedor").modal("hide")
+        if(res.Type == "success"){
+            location.reload()
+
+        }
+
+
+    })
+
+
+</script>

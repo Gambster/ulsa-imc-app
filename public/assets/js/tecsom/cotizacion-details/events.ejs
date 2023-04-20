@@ -1,0 +1,337 @@
+<script>
+
+    $('#generar-orden-de-compra-btn').click( async function(){
+
+        $('#select-version-oc').prop( 'disabled', false );
+
+        const uuidVenta = getParam('uuid');
+        const opcionCotizada = $('#select-version-oc').val();
+
+        $('#select-version-oc').prop( 'disabled', true );
+
+        await asyncPostAjax( '/generarOrdenDeCompra', { uuidVenta, opcionCotizada } )
+
+    });
+
+    $('#checkbox-otra-opcion-oc').click( function(){
+
+        const checkValue = $( this )[0].checked;
+
+        if( checkValue ){
+
+            $('#select-version-oc').prop( 'disabled', false );
+
+        }else{
+
+            var lastOption = $('#select-version-oc option:last').val();
+            $('#select-version-oc').val( lastOption ).trigger('change').prop( 'disabled', true );
+
+        }   
+
+    });
+
+    $('#generar-cotizacion-btn').click( function(){
+
+        $('#select-version-oc').prop( 'disabled', false );
+        var lastOption = $('#select-version-oc option:last').val();
+        $('#select-version-oc').val( lastOption ).trigger('change').prop( 'disabled', true );
+
+    });
+
+    $('#descartar-version-btn').click( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        const versionNum = await asyncPostAjax( '/descartarUltimaVersion', { uuidVenta } );
+
+        const url = location.protocol + '//' + location.host + `/ventas/?uuid=${uuidVenta}&optionNumber=${versionNum}`;
+
+        window.location.replace( url );
+
+    });
+
+    $('#select-version').on( 'change',  async function(){
+
+        const optionNumber = $(this).val();
+        const uuidVenta = getParam('uuid');
+
+        $('#container-spinner').removeClass('hide');
+        $('#pdf-container').addClass('hide');
+
+        const { productos, tiemposDeEntrega, cotizacion } = await asyncPostAjax( '/getPdfData', { uuidVenta, optionNumber } );
+
+        const { divisa } = cotizacion;
+
+        if( optionNumber != '0' ) cotizacion.optionNumber = optionNumber;
+
+        const docPDF = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+        const PdfContainer = document.getElementById('pdf-container');
+        
+        docPDF.getDataUrl((url)=>{
+            PdfContainer.setAttribute('src', url);
+        });
+
+        $('#container-spinner').addClass('hide');
+        $('#pdf-container').removeClass('hide');
+
+        const cotizacionRes = await asyncPostAjax( '/getTotalesCotizacion', { uuid: uuidVenta, numeroOpcion: optionNumber } );
+
+        const { iva, margenUtilidad, numFletes, numOtros, porcentajeMargenUtilidad, subtotal, timestampCotizacion, total, totalGastosDeCompra } = cotizacionRes;
+
+        $('#fecha-cotizacion').text( timestampCotizacion );
+        $('#totalCotizacion').text( total  );
+        $('#totalFletes').text(  totalGastosDeCompra  );
+        $('#margen-utilidad').text(  margenUtilidad  );
+        $('#numeroDeFletes').text( numFletes);
+        $('#numeroDeOtros').text( numOtros);
+        $('#porcentaje-margen-utilidad').text( `${porcentajeMargenUtilidad}%`);
+
+        console.log({ cotizacionRes })
+
+    });
+
+    $('#continuar-version-btn').click( async () => {
+
+    const uuidVenta = getParam('uuid');
+
+        const url = location.protocol + '//' + location.host + `/ventas/?uuid=${uuidVenta}&optionNumber=${ lastVersion }`;
+
+        window.location.replace( url );
+
+    });
+
+    $('#generar-nueva-version-btn').click( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        const opcionNum = await asyncPostAjax( '/crearNuevaVersion', { uuidVenta } );
+
+        const url = window.location.href;
+
+        window.location.replace( `${url}&optionNumber=${ opcionNum }` );
+
+    });
+
+    $('#atras-btn').click( function(){
+
+        const url = window.location.href;
+        const hostName = get_hostname( url );
+
+        window.location.replace(`${hostName}/ventas`);
+
+    });
+
+    $('#nueva-version-btn').click( function(){
+
+        if( !$( this ).hasClass('version-no-finalizada') ){
+
+            $('#confirmacion-nueva-version').modal( 'show' );
+
+        }else{
+
+            $('#confirmacion-version-sin-terminar').modal( 'show' );
+
+        }
+
+    });
+
+    $( document ).ready( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        $('#container-spinner').removeClass('hide');
+        $('#pdf-container').addClass('hide');
+
+
+        let { productos, tiemposDeEntrega, cotizacion } = await asyncPostAjax( '/getPdfData', { uuidVenta, optionNumber: '0' } );
+
+        const { divisa } = cotizacion;
+
+        const { usuario, cliente, compradorType, clienteNombre } = venta;
+
+        cotizacion = {
+
+            ...cotizacion, 
+            usuario, 
+            cliente,
+            compradorType,
+
+        };
+
+        const docPDF = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+        const PdfContainer = document.getElementById('pdf-container');
+        
+        docPDF.getDataUrl((url)=>{
+            PdfContainer.setAttribute('src', url);
+        });
+
+        $('#container-spinner').addClass('hide');
+        $('#pdf-container').removeClass('hide');
+
+        if( !lastVersionFinalizada && lastVersionFinalizada !== false ){
+
+            $('#nueva-version-btn').html(`<i class="material-icons"> schedule </i> Nueva versión`);
+            $('#nueva-version-btn').addClass('version-no-finalizada');
+
+        }
+
+    });
+
+   //Resend Mail 
+
+
+$("#resendMail").click(async function(e){
+
+const buttonDom = $(e.target);
+const button = new loadingButton(buttonDom,"...Reenviando");
+button.start();
+const urlParams = new URLSearchParams(window.location.search);
+const uuidVenta = getParam('uuid')
+
+
+const data = {
+    uid_solicitud: uuidVenta,
+
+
+}
+
+const {Response} = await asyncPostAjax('/solicitudes/clientemail',data);
+showNotification(Response.Type,Response.Message)
+button.stop();
+})
+
+
+$("#addNewMail").click(function(){
+const mail = $("#newmailInput").val();
+if(mail && isValidEmail(mail)){
+    const listRow = document.createElement("li");
+    $(listRow).addClass("list-group-item d-flex justify-content-between")
+    const html =    `<span>${mail}</span>
+    
+                    <span class="material-icons-outlined remove text-danger">
+                    remove
+                    </span>
+    `
+    $(listRow).html(html);
+    $(listRow).data('mail',mail)
+
+    let mailArray = $("#mailList").data("mailList") ?? [];
+    mailArray.push(mail)
+    console.log({mailArray})
+    $("#mailList").data("mailList",mailArray); //Se almacena el array de correos introducidos
+
+
+    $("#mailList").append(listRow);
+    $("#newmailInput").val("");
+    $("#newmailInput").focus();
+
+
+}
+})
+
+$("#mailList").on("click",".remove",function(e){
+console.log("eliminar",e.target,e.delegateTarget);
+const li = $(e.target).closest("li");
+let nodes = Array.from( li.closest('ul').children() ); // get array
+const index = li.index();
+var mails = $(e.delegateTarget).data("mailList");
+
+mails.splice(index,1)
+$(e.delegateTarget).data("mailList",mails)
+$(li).remove();
+   
+
+});
+
+$("#isSendMail").on("change",function(e){
+const isChecked = $(this).is(":checked");
+if(isChecked){
+    $("#mailList").empty();
+    $("#mailList").data("mailList",undefined);
+    $("#newmailInput").prop("disabled",true);
+    $("#addNewMail").prop("disabled",true);
+
+}else{
+    $("#newmailInput").prop("disabled",false);
+    $("#addNewMail").prop("disabled",false);
+}
+
+})
+
+$("#newmailInput").on('keyup', function (e) {
+if (e.key === 'Enter' || e.keyCode === 13) {
+    $("#addNewMail").click();
+}
+});
+
+
+$("#reenviarCorreoModal").on("click",".confirm",async function(e){
+
+    let mailArray = $("#mailList").data("mailList") ?? [];
+    const optionNumber = $("#select-version").val();
+
+    const buttonDom = $(e.target);
+    const loadingBtn = new loadingButton(buttonDom,"...Enviando Email");
+    loadingBtn.start();
+
+    const uuid = getParam( 'uuid' );
+
+    const mensajeExtra = $("#R_mensajeExtra").val();
+
+    const { productos, tiemposDeEntrega, cotizacion } = await asyncPostAjax( '/getPdfData', { uuidVenta:uuid, optionNumber } );
+
+    const { divisa } = cotizacion;
+
+    const docPDF = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+
+    docPDF.getDataUrl(async (url)=>{
+        const {Response} = await asyncPostAjax('/ventas/mail/cotizacionconfirmacion',{uuidVenta:uuid, mailListing : mailArray, base64PDF: url, mensajeExtra})
+        showNotification(Response.Type,Response.Message);
+
+        $(e.delegateTarget).modal("hide");
+        loadingBtn.stop();
+
+    });
+
+    
+})
+
+
+$("#saveComprador").click(async function(e){
+    const buttonDom = $(this);
+    const Loading = new loadingButton(buttonDom,"Cambiando");
+    Loading.start()
+    const urlParams = new URLSearchParams(window.location.search);
+    const uuidVenta = urlParams.get('uuid');
+    const optionNumber = $("#select-version").val();
+
+    const {value} = getSelect2Values("#selectComprador");
+    const empresauid = '<%= venta.empresa %>';
+
+    const { productos, tiemposDeEntrega, cotizacion } = await asyncPostAjax( '/getPdfData', { uuidVenta:uuidVenta, optionNumber } );
+
+    const { divisa } = cotizacion;
+
+    const docPDF = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+
+    docPDF.getDataUrl(async (url)=>{
+       
+        const {Response} = await asyncPostAjax("/ventas/setcomprador/",{comprador: value, empresa: empresauid, venta: uuidVenta, base64PDF: url});
+        showNotification(Response.Type,Response.Message);
+        if(Response.type == "success"){
+            //location.reload();
+        }
+        Loading.stop();
+    });
+
+    
+
+})
+
+$("#selectComprador").on("change",function(e){
+    $("#changeComprador").collapse("show")
+});
+
+
+</script>
+

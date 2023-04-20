@@ -1,0 +1,394 @@
+<script>
+
+    $('#nuevo-lugar-form').submit( function( e ){
+
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objLugar = {};
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objLugar[ name ] = value.trim();
+
+        }
+
+        console.log( objLugar );
+
+        postAjax( '/registroLugarEntrega', objLugar, result => {
+
+            
+            const res = result.Response;
+            showNotification(res.Type,res.Message)
+
+            if( res.Type == 'success' ){
+
+                clearModalAndClose( '#addLugar', '#nuevo-lugar-form' );
+                console.log(res.Data.payload);
+                $('#tableLugaresEntrega').DataTable().row.add(res.Data.payload).draw();
+            }else if(res.Type == "Error"){
+
+                if(res.hasOwnProperty('InputsError') ){
+
+                    inputFieldsError(res.InputsError,1)
+
+                }
+            }
+
+        }, rej => {
+
+            console.log('nel')
+
+        });
+
+    });
+    
+    $('#nueva-unidad-form').submit( function( e ){
+
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objUnidadMedida = {};
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objUnidadMedida[ name ] = value.trim();
+
+        }
+
+        console.log({ objUnidadMedida });
+
+        postAjax( '/registroUnidadMedida', objUnidadMedida, (  ) => {
+
+            console.log('smn')
+            clearModalAndClose( '#addUnidadMedida', '#nueva-unidad-form' );
+
+        }, rej => {
+
+            console.log('nel')
+
+        });
+
+    });
+
+    $('#nuevo-tiempo-form').submit( function( e ){
+
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objTiempo = {};
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objTiempo[ name ] = value.trim();
+
+        }
+
+        console.log( objTiempo );
+        
+
+        postAjax( '/registroTiempoEntrega', objTiempo, result => {
+
+            const res = result.Response;
+            showNotification(res.Type,res.Message)
+
+            if( res.Type == 'success' ){
+
+                clearModalAndClose( '#addTiempo', '#nuevo-tiempo-form' );
+                $('#tableTiemposEntrega').DataTable().row.add(res.Data.payload).draw();
+
+            }else if(res.Type == "Error"){
+
+                if(res.hasOwnProperty('InputsError') ){
+
+                    inputFieldsError(res.InputsError,1)
+
+                }
+            }
+
+            
+        }, rej => {
+
+            console.log('nel')
+
+        });
+
+    });
+
+    $('#nuevo-metodo-form').submit( function( e ){
+
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objMetodo = {};
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objMetodo[ name ] = value.trim();
+
+        }
+
+        console.log(objMetodo);
+
+        objMetodo.plazo = objMetodo.plazo == '' ? "No aplica" :  objMetodo.plazo + " Días";
+
+        console.log( objMetodo );
+
+        postAjax( '/registroMetodoPago', objMetodo, result => {
+
+            
+
+            const res = result.Response;
+            showNotification(res.Type,res.Message)
+
+            if( res.Type == 'success' ){
+
+                clearModalAndClose( '#addMetodo', '#nuevo-metodo-form' );
+                $('#tableMetodosPago').DataTable().row.add(res.Data.payload).draw();
+
+            }else if(res.Type == "Error"){
+
+            if(res.hasOwnProperty('InputsError') ){
+
+                inputFieldsError(res.InputsError,1)
+
+            }
+            }
+
+        }, rej => {
+
+            console.log('nel')
+
+        });
+
+    });
+
+    $("#edit-lugar-form").submit(function(e){
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objLugar = {};
+
+        const modalData = $('#editLugar').modal().data();
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objLugar[ name ] = value.trim();
+
+        }
+        objLugar.uuid = modalData.uid;
+
+        postAjax( '/updateLugar', objLugar, (  ) => {
+
+            clearModalAndClose( '#editLugar', '#edit-lugar-form' );
+
+            var newData = objLugar;
+                newData.opciones = modalData.opciones;
+                newData.timestamp = modalData.timestamp;
+                console.log(newData);
+            actualizarRow($(`#${modalData.tabla}`).DataTable(), modalData.index, newData);
+
+        }, rej => {
+
+            console.log('nel')
+
+        });
+    });
+
+    $("#edit-tiempo-form").submit(function(e){
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objTiempo = {};
+
+        const modalData = $('#editTiempo').modal().data();
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objTiempo[ name ] = value.trim();
+
+        }
+        objTiempo.uuid = modalData.uid;
+
+        console.log( objTiempo );
+
+        postAjax( '/updateTiempo', objTiempo, (  ) => {
+
+            clearModalAndClose( '#editTiempo', '#edit-tiempo-form' );
+
+            var newData = objTiempo;
+                newData.opciones = modalData.opciones;
+                newData.timestamp = modalData.timestamp;
+                console.log(newData);
+                
+            actualizarRow($(`#${modalData.tabla}`).DataTable(), modalData.index, newData);
+
+        }, rej => {
+
+            console.log('nel')
+
+        });
+    });
+
+    $("#edit-metodo-form").submit(function(e){
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objMetodo = {};
+
+        const modalData = $('#editMetodo').modal().data();
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objMetodo[ name ] = value.trim();
+
+        }
+        objMetodo.uuid = modalData.uid;
+
+        objMetodo.plazo = objMetodo.metodoPago == 'Contado' ? "No aplica" :  objMetodo.plazo + " Días";
+
+
+        postAjax( '/updateMetodo', objMetodo, (  ) => {
+
+            clearModalAndClose( '#editMetodo', '#edit-metodo-form' );
+
+            var newData = objMetodo;
+                newData.opciones = modalData.opciones;
+                newData.timestamp = modalData.timestamp;
+                console.log(newData);
+                console.log(modalData.index);
+            actualizarRow($(`#${modalData.tabla}`).DataTable(), modalData.index, newData);
+
+        }, rej => {
+
+            console.log('nel')
+
+        });
+    });
+
+
+    $('#deleteRow').on('click', '.confirmDelete', function (e) {
+
+        const modalData = $(e.delegateTarget).modal().data();
+        console.log(modalData);
+        let ajaxPath = "/deleteConf";
+        let ajaxData = modalData;
+        postAjax(ajaxPath,ajaxData,result=>{
+            
+            const res = result.Response;
+            showNotification(res.Type,res.Message)
+
+            if( res.Type == 'success' ){
+                $(e.delegateTarget).modal('hide');
+                
+                deleteRowWithUID($(`#${modalData.tabla}`).DataTable(),modalData.uid,"uuid")
+            }else if(res.Type == "Error"){
+                if(res.hasOwnProperty('InputsError') ){
+                    inputFieldsError(res.InputsError,1)
+                }
+            }
+            
+        })
+
+    });
+
+    
+
+    $('#metodoPago').on( 'change', async function(){
+
+        const value = $( this ).val();
+
+        if( value == 'Crédito' ){
+            $('#divPlazos').attr('style','display: block;');
+        }else{
+            $('#divPlazos').attr('style','display: none;');
+        }
+
+    });
+
+    $('#edit_metodoPago').on( 'change', async function(){
+        
+        const value = $( this ).val();
+        console.log(value);
+        if( value == 'Crédito' ){
+            $('#edit_divPlazos').attr('style','display: block;');
+        }else{
+            $('#edit_divPlazos').attr('style','display: none;');
+        }
+
+    });
+
+
+    $('#tableLugaresEntrega').on('click', '.tableButtons i', function (e) {
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) );
+        var UserRowData = tablaLugar.row( $(this).closest( "tr" ) ).data();
+
+        if($(this).text() == "edit"){
+
+            $("#editLugar").modal("show").data({row, uid:UserRowData.uuid, tabla: "tableLugaresEntrega", 
+            opciones: UserRowData.opciones, timestamp: UserRowData.timestamp, index: row.index()});
+            $('#edit_nombre').val(UserRowData.nombre);
+
+            if( UserRowData.localizacion == "Dentro de la Republica" ){
+                $('#edit_dentroRepublica').prop("checked", true);
+                $('#edit_esFrontera').prop("checked", false);
+            }else{
+                $('#edit_dentroRepublica').prop("checked", false);
+                $('#edit_esFrontera').prop("checked", true);
+            }
+
+            console.log(UserRowData);
+
+        }else if($(this).text() == "delete"){
+            $("#deleteRow").modal("show").data({uid:UserRowData.uuid, ruta: "lugarEntrega", 
+            tabla: "tableLugaresEntrega"});
+        }
+
+    });
+
+    $('#tableTiemposEntrega').on('click', '.tableButtons i', function (e) {
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) );
+        var UserRowData = tablaTiempos.row( $(this).closest( "tr" ) ).data();
+
+        if($(this).text() == "edit"){
+
+            $("#editTiempo").modal("show").data({row, uid:UserRowData.uuid, tabla: "tableTiemposEntrega", 
+            opciones: UserRowData.opciones, timestamp: UserRowData.timestamp, index: row.index()});
+            $('#edit_cantidad').val(UserRowData.cantidad);
+            $('#edit_unidad').val(UserRowData.unidad).trigger('change');
+            console.log(UserRowData);
+
+        }else if($(this).text() == "delete"){
+            $("#deleteRow").modal("show").data({uid:UserRowData.uuid, ruta: "tiempoEntrega", tabla: "tableTiemposEntrega"});
+        }
+
+    });
+
+    $('#tableMetodosPago').on('click', '.tableButtons i', function (e) {
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) );
+        var UserRowData = tablaMetodos.row( $(this).closest( "tr" ) ).data();
+
+        if($(this).text() == "edit"){
+
+            $("#editMetodo").modal("show").data({row, uid:UserRowData.uuid, tabla: "tableMetodosPago", 
+            opciones: UserRowData.opciones, timestamp: UserRowData.timestamp, index: row.index()});
+            var plazo = (UserRowData.plazo).split(' ');
+            $('#edit_plazo').val(plazo[0]);
+            $('#edit_metodoPago').val(UserRowData.metodoPago).trigger('change');
+            console.log(UserRowData);
+
+        }else if($(this).text() == "delete"){
+            $("#deleteRow").modal("show").data({uid:UserRowData.uuid, ruta: "metodoPago", tabla: "tableMetodosPago"});
+        }
+
+    });
+    
+
+</script>

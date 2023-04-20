@@ -1,0 +1,71 @@
+<script>
+
+    const loadMoreHistorial = async (  ) => {
+
+        const { lastDoc } = $('#historial-container').data();
+        const uuidProducto = $('#productSearch').val();
+        $('#historial-container').unbind();
+
+        const objLoad = {
+
+            init: ( !lastDoc ) ? false : lastDoc,
+            uuidProducto
+
+        };
+
+        const result = await asyncPostAjax( '/loadMoreHistorial', objLoad );
+
+        const { last, loadMore, ventasData } = result;
+
+        if( !loadMore ){
+
+            $('#historial-container').unbind();
+
+        }
+
+        $('#historial-container').data({ lastDoc: last });
+
+        console.log({ last, loadMore, ventasData })
+
+        for( const venta of ventasData  ){
+
+            const { fecha, folioCotizacion, folioSolicitud, precioUnitario } = venta;
+
+            console.log('apend')
+            $('#historial-container').append(`<a href="#" class="list-group-item list-group-item-action" aria-current="true">
+                                                <div class="row">
+                                                    <div class="col-10">
+                                                        <div class="d-flex w-100 justify-content-between">
+                                                            <h5 class="mb-1">${ precioUnitario ? precioUnitario : '$ -' }</h5>
+                                                        </div>
+                                                        <p class="mb-1">${ fecha }</p>
+                                                        <p class="mb-2">RFQ-${ folioSolicitud }</p>
+                                                    </div>
+                                                    <div class="col-2" style="display: flex; align-items: center;">
+                                                        <small><i style="cursor: pointer; font-size: 25px; padding: 5px; border-radius: 4px;" id="btnInfoSolicitudes" data-bs-toggle="modal" data-bs-target="#infoSolicitud" class="material-icons-outlined btn-info btn-style-light">search</i></small>
+                                                    </div>
+                                                </div>
+                                            </a>`);
+
+        }
+
+        if( ventasData.length == 0 ){
+
+            $('#historial-container').html(`<p>No hay historial para este producto.</p>`);
+
+        }
+
+        $('#historial-container').on('scroll', async function() {
+
+            if (($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight - 5) && loadMore) {
+                
+                loadMoreHistorial();
+                console.log('mas ventas cargados por scroll');
+
+            }
+
+});
+
+    };
+
+</script>

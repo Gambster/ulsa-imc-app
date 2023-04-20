@@ -1,0 +1,198 @@
+<script>
+
+    const socketSolicitudes = io.connect("/solicitudes");
+
+    // socketSolicitudes.on('searchSolicitud', function({ descripcion, id, arrayVentas }) {
+
+    //     if (data != "sin-resultados") {
+
+    //         var node = $('#tableBusquedaAvanzadaProductos').DataTable().row.add({
+
+    //             Descripcion: descripcion,
+    //             uuidProduct: id,
+    //             arrayVentas,
+    //             btnInfo: '<span class="material-icons">expand_more</span>',
+
+    //         }).draw().node();
+            
+    //         $(node).addClass('elementosBusqueda');
+    //         $(node).find('td').eq(1).addClass('ver-mas-prods-avanzado');
+    //         $(node).find('td').eq(0).addClass('product-description');
+    //         $(node).hide();
+    //         $(node).fadeIn("slow");
+    //         $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+
+    //     } else {
+            
+    //         $('#tableBusquedaAvanzadaProductos').DataTable().clear().draw();
+            
+    //     }
+
+    // });
+
+    socketSolicitudes.on('nuevasolicitud', function( data ) {
+        
+        const { Solicitud, Info } = data;
+        const { Folio, Timestamp } = Solicitud;
+        const { fecharecepcion, fechasolicitud, empresa, cliente, numeroDeSolicitud } = Info;
+
+        const uuidVenta = data.key;
+
+        var badge = '<span class="badge badge-danger">Sin cotizar</span>';
+        var buttons = '<button type="button" class="btn btn-success btnCrearCotizacion" data-bs-toggle="modal" data-bs-target="#viewCot">Cotizar</button>\n';
+        var more = '<div class="dropdown">' +
+            '<a class="btn btn-secondary dropdown-toggle expandMoreTable" href="#" role="button" id="dropdownMenuLink" data-bs-toggle="dropdown" aria-expanded="false">' +
+            '<i class="material-icons-outlined">more_vert</i>' +
+            '</a>' +
+            '<ul class="dropdown-menu dropDownSolicitudUl" aria-labelledby="dropdownMenuLink">' +
+            '<li class="dropDownSolicitud ver-solicitud-btn"><i class="material-icons-outlined moreTable">visibility</i><a class="dropdown-item" href="#">Ver</a></li>' +
+            '<li class="dropDownSolicitud"><i class="material-icons-outlined moreTable">edit</i><a class="dropdown-item" href="#">Editar</a></li>' +
+            '</ul>' +
+            '</div>';
+
+        const datesRangeArray = $('.datefilterto').val().split(' - ');
+        if (new Date(Timestamp) > new Date(datesRangeArray[0]) && new Date(Timestamp) < new Date(`${datesRangeArray[1]} 23:59:59`) &&  !$('#cotizado-tab').hasClass('active') ) {
+
+            var node = $('#table-solicitud').DataTable().row.add({
+
+                Folio,
+                fecharecepcion,
+                numeroDeSolicitud,
+                fechasolicitud,
+                'Cliente': `${cliente[ Object.keys( cliente )[0] ]} / ${empresa[ Object.keys( empresa )[0] ]}`,
+                Estado: badge,
+                cotizarBtn: buttons,
+                dropdownBtn: more,
+                uuidVenta
+
+            }).draw().node();
+
+            $(node).hide();
+            $(node).fadeIn("slow");
+            
+        }
+    });
+
+    /*socket que recibe la respuesta de dar clic en el botón cotizar de alguna solicitud*/
+    socketSolicitudes.on('generarCot', function( data ) {
+
+        const { cliente, clienteUid, empresa, empresaUid, fechaS, fechaR, folioR, numSolicitud, Cantidad, folioCotizacion, folioOpcion, id } = data;
+
+        postAjax( '/getEmpresaData', { empresaUid }, ( { empresasObject } ) => {
+
+            const { lugarDeEntrega } = empresasObject.Info;
+            
+            $('#viewCot').modal().data( { lugarDeEntrega } )
+
+            $('.fleteInfoEntrega').val( lugarDeEntrega );
+            $('.fleteInfoEntrega').prop('disabled', true);
+
+        });
+        
+        $('#fechaSolicitud').html( fechaS );
+        $('#fechaRecepcion').html( fechaR );
+        $('#folioC').html( numSolicitud );
+        $('#folioS').html( folioR );
+        $('#cotEmpresa').html( empresa );
+        $('#cotComprador').html( cliente );
+        //console.log(data.folioR);
+
+        const { provedoresSelectHtml } = $('#viewCot').modal().data();
+
+        const extraProdData = {};
+
+        for (var i = 0; i < data.productos.length; i++) {
+            
+            var htmlImg = "";
+            var imgs = data.productos[i]["Imagenes"];
+            var counter = 1;
+
+            const { Descripcion, Observaciones, id, informacionAdicional, unidadMedida, Cantidad } = data.productos[i]
+
+            if (imgs != undefined) {
+                for (var j = 0; j < imgs.length; j++) {
+                    var imgHref = "images/" + data.productos[i]["id"] + '/' + imgs[j] + ".png";
+                    var imgTag = "<img src ='images/" + data.productos[i]["id"] + '/' + imgs[j] + ".png'>";
+                    if (counter == 1 && imgs.length > 1) {
+                        htmlImg += "<a data-fslightbox='" + data.productos[i]["id"] + "' href='" + imgHref + "'><div style='width: 80px; text-align:center;'><span class='productCounter'>+ " + (imgs.length - 1).toString() + "</span><img style='width:100%;' src='" + imgHref + "'/></div></a>";
+                    } else if (counter == 1 && imgs.length == 1) {
+                        htmlImg += "<a data-fslightbox='" + data.productos[i]["id"] + "' href='" + imgHref + "'><div style='width: 80px; text-align:center;'><img style='width:100%;' src='" + imgHref + "'/></div></a>";
+                    } else {
+                        htmlImg += "<a data-fslightbox='" + data.productos[i]["id"] + "' href='" + imgHref + "'></a>"
+                    }
+                    counter++;
+                }
+            } else {
+                htmlImg = "Sin imagen";
+            }
+
+            extraProdData[ id ] = {
+
+                imgs,
+                Observaciones,
+                informacionAdicional,
+                htmlImg,
+
+            };
+
+            $('.productSelectCot').append($('<option>', {
+                
+                value: id,
+                text: Descripcion,
+
+            }));
+
+            $('#viewCot1').DataTable().rows.add([{
+
+                Descripcion,
+                unidadMedida,
+                Cantidad,
+                uuidProduct: id,
+                "Proveedor": provedoresSelectHtml.replace("{-numero-}", i.toString()),
+                "Costo": '<input type="text" class="form-control costoCot input-money-mask" data-inputmask="\'alias\': \'numeric\', \'groupSeparator\': \',\', \'digits\': 2, \'digitsOptional\': false, \'prefix\': \'$ \', \'placeholder\': \'0\'" inputmode="decimal" style="text-align: right;">',
+                "Utilidad": '<div class="input-group mb-3" style="margin-bottom: 0 !important"><input type="number" min="0" class="form-control utilidadCot" placeholder="0"><span class="input-group-text">%</span></div>',
+                "Precio": "$ 0.00",
+                "expand": '<i class="material-icons-outlined cursor">expand_more</i>',
+                informacionAdicional,
+                Observaciones,
+                "imgData": htmlImg,
+                expandMore: '<i class="material-icons-outlined cursor">expand_more</i>',
+
+            }]).draw();
+        }
+
+        const cotizacion = { 
+
+            cliente, 
+            empresa,
+            clienteUid,
+            empresaUid,
+            folioCotizacion, 
+            folioOpcion,
+            uuidVenta: id,
+
+         };
+
+         $('#viewCot').modal().data({cotizacion});
+        $('#viewCot').modal().data({extraProdData});
+
+        $('.costoCot').inputmask();
+        $('.costoCot').val('0');
+
+        for (var i = 0; i < data.productos.length; i++) {
+
+            $("#select-proveedor" + i.toString()).select2({
+
+                placeholder: "Proveedor",
+                dropdownParent: $('#viewCot'),
+                width: "170px"
+
+            })
+
+        }
+
+        refreshFsLightbox();
+    
+    });
+
+</script>

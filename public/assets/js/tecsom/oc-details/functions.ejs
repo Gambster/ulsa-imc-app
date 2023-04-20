@@ -1,0 +1,33 @@
+<script>
+
+    const divisa = '<%= cotizacion.divisa %>';
+
+    const loadGastosImprevistos = async () => {
+
+        console.log({ divisa });
+
+        $('#gastos-imprevistos-list').empty();
+        const uuidVenta = getParam( 'uuid' );
+
+        const gastosImprevistos = await asyncPostAjax( '/getGastosImprevistos', { uuidVenta } );
+
+        for( const gastoImprevisto of gastosImprevistos ){
+
+            const { uuidGastoImprevisto, gasto, descripcionGastoImprevisto } = gastoImprevisto;
+
+            $('#gastos-imprevistos-list').append(`<a href="#" class="list-group-item item-gasto-imprevisto" uuid="${ uuidGastoImprevisto }">
+                                                    <div class="row">
+                                                        <div class="col-8">
+                                                            <h5 class="mb-1">${ formatterMoney( divisa, gasto ) }</h5>
+                                                            <p class="mb-1">${ descripcionGastoImprevisto }</p>
+                                                        </div>
+                                                        <div class="col-4 d-flex align-items-center">
+                                                            <button type="button" class="btn btn-danger borrar-gasto-imprevisto-btn"><i class="material-icons i-items">delete_outline</i></button>   
+                                                        </div>
+                                                    </div>
+                                                </a>`);
+
+        }
+    };
+
+</script>

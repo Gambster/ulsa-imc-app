@@ -1,0 +1,59 @@
+<div id="container-lista-productos" class="row">
+    <div class="col-12">
+        <div  data-bs-toggle="collapse" href="#collapse-cotizadas" class="searchHeader">Cotizadas<span id="cotizadasNum" class="badge rounded-pill badge-primary" style="float: right; margin-top: 2px;" >0</span></div>
+            <div class="collapse" id="collapse-cotizadas">
+                <table id="table-cotizadas-prods"></table>
+            </div>
+        </div>
+        
+    </div>
+    <div class="col-12">
+        <div data-bs-toggle="collapse" href="#collapse-no-cotizadas" class="searchHeader">No cotizadas <span id="noCotizadasNum" class="badge rounded-pill badge-primary" style="float: right; margin-top: 2px;" >0</span></div>
+            <div class="collapse" id="collapse-no-cotizadas">
+                <table id="table-no-cotizadas-prods"></table>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+<script>
+    $('#table-cotizadas-prods').DataTable({
+        columns: [
+
+            { data: 'fecha', title: 'Fecha', orderable: false },
+
+        ],
+        "paging": false,
+        "ordering": false,
+        "info": false,
+        "searching": false,
+        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+        },
+    });
+    $('#table-cotizadas-prods').width('100%');
+    
+    $('#table-no-cotizadas-prods').DataTable({
+        columns: [
+
+            { data: 'fecha', title: 'Fecha', orderable: false },
+            { data: 'numFolio', title: 'Folio', orderable: false },
+            { data: 'btn', orderable: false },
+
+        ],
+        "paging": false,
+        "ordering": false,
+        "info": false,
+        "searching": false,
+        "language": {
+            "url": "https://cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json"
+        },
+        "columnDefs": [
+            { "width": "30%", "targets": 0 },
+            { "width": "70%", "targets": 1 },
+        ]
+    });
+    $('#table-no-cotizadas-prods').width('100%');
+
+</script>

@@ -1,0 +1,208 @@
+<script>
+
+    const resumenTabDisplay = (  ) => {
+
+        const fletes = $('#fletesCot').DataTable().rows().data().toArray();
+
+        const leftProducts = $(".productSelectCot option").length;
+
+        postAjax( '/validateFleteCot', { leftProducts, fletes }, (  ) => {
+            
+            fletes.forEach(function( { productosData } ){ productosData.forEach( producto => {delete producto.disabled; delete producto.element; delete producto.selected; delete producto._resultId;} ) });
+
+            $('#viewCot').modal().data({fletes});
+            clearAddFleteInputs();
+            $('#resumenTabBtn').click();
+
+        }, (  ) => {
+
+            showNotification( 'error', 'Verifica que todos los campos estén llenos y que no falte ningún producto de agregar a los fletes.' );
+
+        });
+
+    };
+
+    const preciosTabDisplay = (  ) => {
+
+        const vigencia = $('#vigenciaDays').val();
+        const divisa = $('#select-divisa').val();
+        const productos = [];
+
+        $('#viewCot1 > tbody  > tr').each(function( index ){
+
+            const costoUnitario =  parseFloat( formatMoneyToDecimal( $( this ).find('.costoCot').val() ) );
+            const utilidad = formatMoneyToDecimal( $( this ).find('.utilidadCot').val() );
+
+            const data = $(this).find('.proveedorCot').select2('data')
+
+            const cantidad = $( this ).find('.cantidad').text()
+            const proveedor = $( this ).find('select').val();
+            const unidadMedida = $( this ).find('.unidad-medida').text();
+
+            const precioUnitario = costoUnitario + ( costoUnitario * ( utilidad / 100 ) );
+
+            const { uuidProduct } = $('#viewCot1').DataTable().row( index ).data();
+
+            productos.push({
+
+                costoUnitario,
+                utilidad,
+                precioUnitario,
+                proveedor,
+                proveedorName: data[0].text,
+                uuidProduct,
+                cantidad,
+                unidadMedida,
+
+            });
+
+        });
+
+        
+
+        postAjax( '/validateProductosCot', { vigencia, divisa, productos } ,(  ) => {
+
+            $('#btn-fletes-tab').click();
+            
+            $('#viewCot').modal().data().cotizacion.vigencia = vigencia;
+            $('#viewCot').modal().data({productos})
+
+
+        }, (  ) => {
+
+            showNotification( 'error', 'Verifica que todos los campos estén llenos.' );
+
+        });
+
+    };
+
+    const changePrefix = (  ) => {
+
+        const currency = $('.divisaCot').val();
+        
+        $('.input-money-mask').each( function(){
+
+            if(currency == "MXN") {
+
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'");
+
+            }else if (currency == "USD") {
+
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'");
+
+            }else if (currency == "EUR") {
+
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '€ ', 'placeholder': '0'");
+
+            }else if (currency == "GBP") {
+
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '£ ', 'placeholder': '0'");
+
+            }
+
+            $( this ).inputmask();
+
+        });
+
+    };
+
+    const toggleProuctosCotizacion = (  ) => {
+
+
+        (  $('#select-divisa').val() == '' || $('#select-divisa').val() == null || $('#vigenciaDays').val() == '' ) ? $('#container-productos-tab').addClass('disable-click') : $('#container-productos-tab').removeClass('disable-click');
+        
+
+    };
+    
+    const clearResumenTab = (  ) => {
+
+        $('#resumen-cotizacion-table').DataTable().clear().draw();
+
+    };
+
+    const clearAddFleteInputs = (  ) => {
+
+        console.log( `lugar: ${$('#card-container').data()}` )
+
+        const { lugarDeEntrega } = $('#card-container').data();
+
+        $(".fleteInfoEntrega").val( lugarDeEntrega );
+        $(".fleteInfoEntrega").prop( 'disabled', true )
+
+        $('.fleteTiempoFromEntrega').val('');
+        $('.fleteTiempoToEntrega').val('');
+        $('.productSelectCot').val('');
+        $('.productSelectCot').trigger('change');
+
+        $('.fleteNtl').val('$ 0.00');
+        $('.fleteNtl').inputmask();
+
+        $('.fleteImpo').val('$ 0.00');
+        $('.fleteImpo').inputmask();
+
+        $('.fleteIntl').val('$ 0.00');
+        $('.fleteIntl').inputmask();
+
+        $('#checkbox-lugar-entrega-diferente').prop( 'checked', false );
+
+        $('#fleteCollapse').collapse('hide');
+
+        $('#createFlete').removeClass( 'hide' );
+
+    };
+
+    const clearProductosTab = (   ) => {
+
+        $('#viewCot1').DataTable().clear();
+
+    };
+
+    const clearModal = (  ) => {
+
+        $('#vigenciaDays').val('');
+        $('#select2-select-divisa-container').val('').trigger('change');
+        $('#fletesCot').DataTable().clear();
+        clearProductosTab();
+        clearResumenTab();
+        clearAddFleteInputs();
+        
+    };
+
+    const getSelectHtmlData = ( functionReturn ) => {
+
+        let proveedoresHTML = '<select id="select-proveedor{-numero-}" class="form-select proveedorCot" style="width: 50%">';
+
+        postAjax( "/getProveedores", {}, ( data ) => {
+
+            console.log({data})
+            
+            proveedoresHTML += '<option></option>';
+            var proveedores = data.razonesSocialesProveedores[0];
+            var proveedoresUuids = Object.keys(data.razonesSocialesProveedores[0]);
+            
+            for (let i = 0; i < proveedoresUuids.length; i++) {
+
+                proveedoresHTML += '<option value="' + proveedoresUuids[i] + '">' + proveedores[proveedoresUuids[i]].Info.Nombre + '</option>';
+
+            }
+
+            proveedoresHTML += '</select>';
+
+            return functionReturn( proveedoresHTML );
+
+        });
+
+    };
+
+    const nuevaCotizacion = ( elm ) => {
+
+        const index = $( elm ).closest('tr').index();
+        const { Folio, uuidVenta } = $('#table-solicitud').DataTable().rows().data()[index];
+
+        $("#folioRFQ").text( Folio );
+
+        socketSolicitudes.emit('generarCot', uuidVenta);
+
+    };
+
+</script>

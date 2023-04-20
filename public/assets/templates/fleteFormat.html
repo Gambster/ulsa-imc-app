@@ -1,0 +1,44 @@
+<div class="list-group-item list-group-item-action" aria-current="true">
+    <div class="row">
+        <div class="col-4">
+            <div class="row">
+                <div class="col-4">
+                    <label for="solicitudMedida" class="form-label">Flete intl. *</label>
+                    <input type="text" class="form-control fleteIntl" data-inputmask="'alias': 'numeric', 'groupSeparator': ',', 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'" inputmode="decimal" style="text-align: right;">
+                </div>
+                <div class="col-4">
+                    <label for="solicitudMedida" class="form-label">Importación *</label>
+                    <input type="text" class="form-control fleteImpo" data-inputmask="'alias': 'numeric', 'groupSeparator': ',', 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'" inputmode="decimal" style="text-align: right;">
+                </div>
+                <div class="col-4">
+                    <label for="solicitudMedida" class="form-label">Flete ntl. *</label>
+                    <input type="text" class="form-control fleteNtl" data-inputmask="'alias': 'numeric', 'groupSeparator': ',', 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'" inputmode="decimal" style="text-align: right;">
+                </div>
+            </div>
+        </div>
+        <div class="col-8">
+            <div class="row">
+                <div class="col-7">
+                    <label for="solicitudMedida" class="form-label">Lugar de entrega *</label>
+                    <input type="text" class="form-control fleteInfoEntrega">
+                    <div class="container-info-alias container-numero-solicitud">
+                        <input class="form-check-input checkboxes-lugar-entrega-diferente" type="checkbox" value="" id="checkbox-lugar-entrega-diferente" >
+                        <label class="form-check-label" for="checkbox-lugar-entrega-diferente">Asignar lugar de entrega diferente</label>
+                    </div>
+                </div>
+                <div class="col-5">
+                    <label for="solicitudMedida" class="form-label">Tiempo de entrega *</label>
+                    <div class="input-group">
+                        <input type="number" min="0" placeholder="0" class="form-control fleteTiempoFromEntrega"> 
+                        <span id="a-from-to">a</span>
+                        <input type="number" min="0" placeholder="0" class="form-control fleteTiempoToEntrega"> 
+                        <select class="form-select fleteTiempoUni">
+                            <option>Día(s)</option>
+                            <option>Semana(s)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

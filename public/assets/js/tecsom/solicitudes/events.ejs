@@ -1,0 +1,752 @@
+<script>
+
+    $('#declinado-tab').click( function(){
+
+        Cookies.set('filtro-tab', 'declinado');
+
+    });
+
+    $('#ordenes-compra-tab').click( function(){
+
+        Cookies.set('filtro-tab', 'oc');
+
+    });
+
+    $('#cotizado-tab').click( function(){
+
+        Cookies.set('filtro-tab', 'cotizado');
+
+    });
+
+    $('#sin_cotizar-tab').click( function(){
+
+        Cookies.set('filtro-tab', 'sin-cotizar');
+
+    });
+
+    /*$('#declinado-tab').click( function(){
+
+        // $('#table-cotizado').empty();
+        load_More( 'declinado', $('#table-declinado').DataTable(), '/loadTable', $('#declinado')[0] );
+
+    });
+    
+    $('#cotizado-tab').click( function(){
+
+        // $('#table-cotizado').empty();
+        load_More( 'cotizado', $('#table-cotizado').DataTable(), '/loadTable', $('#cotizado')[0] );
+
+    });
+
+    $('.cbCliente').on( 'change', function(){
+
+        $('#select-comprador').val( null ).trigger('change');
+
+    });*/
+
+    $('.btn-filter').on( 'click', function(){
+
+        $('.btn-filter.active').removeClass('active');
+        $(this).addClass('active');
+
+        const filtro = $(this).text().replace( ' ', '-' ).trim().toLowerCase();
+
+        loadMore( filtro, $('#table-solicitud').DataTable(), '/loadTable', $('#container-table') );
+
+    });
+    
+    /**************** INC - EVENT LISTENER DIV IMÁGENES ****************/
+    
+    /*const target = $("#img-container-carousel")[0];
+
+    const observer = new MutationObserver( mutations => {
+
+        mutations.forEach( mutation => {
+            
+            if( $( '#img-container-carousel' ).html() == "" ){
+
+                $( '#container-imgs' ).addClass('hide');
+                
+            }else{
+
+                $( '#container-imgs' ).removeClass('hide');
+
+            }
+
+        });
+
+    });
+
+    const config = { attributes: true, childList: true, characterData: true };
+    observer.observe( target, config );*/
+
+    /**************** FIN - EVENT LISTENER DIV IMÁGENES ****************/
+
+    $( document ).on( 'click', 'td.expand_more_prodSearch', function(){
+
+        const thisElement = this;
+
+        $("#tableBusquedaAvanzadaProductos tbody tr:not(.row-result)").remove();
+        
+        const tr = $(this).closest('tr');
+        const index = tr.index();
+        const row = $('#tableBusquedaAvanzadaProductos').DataTable().row(tr);
+        
+        if (row.child.isShown()) {
+
+            row.child.hide();
+            tr.removeClass('shown');
+            $( thisElement ).find( '.material-icons' ).text( 'expand_more' );
+
+        } else{
+
+            // Open this row
+
+            const { productID, arrayVentas } = $('#tableBusquedaAvanzadaProductos').DataTable().rows().data().toArray()[index];
+            
+            row.child( format( row.data(), "tableBusquedaAvanzada.html" ) ).show();
+            tr.addClass('shown');
+
+            $( thisElement ).find( '.material-icons' ).text( 'expand_less' );
+
+            postAjax( '/getProductVentas', { arrayVentas }, res => {
+
+                const url = window.location.origin;
+
+                const arrayCotizadas = res.filter( ({ Cotizacion }) => Cotizacion  );
+
+                const numCotizadas = arrayCotizadas.length; 
+                const numNoCotizadas = res.length - numCotizadas;
+
+                const objArrayNoCotizadas = [];
+                const objArrayCotizadas = [];
+
+                for( const venta of res ){
+
+                    const { Solicitud, Cotizacion, uuidVenta, timestamp } = venta;
+
+                    if( !Cotizacion ){
+
+                        objArrayNoCotizadas.push({
+
+                            fecha: timeConverter( timestamp ),
+                            numFolio: Solicitud,
+                            btn: `<a target="_blank" href="${ url }/ventas/?uuid=${ uuidVenta }"> <span class="material-icons">info</span> </a>`,
+
+                        });
+
+                    }else{
+
+                        objArrayCotizadas.push({
+
+                            fecha: 'placeholder fecha',
+                            precio: 'placeholder precio',
+                            btn: 'placeholder btn',
+
+                        });
+
+                    }
+
+                }
+
+                $('#table-no-cotizadas-prods').DataTable().rows.add( objArrayNoCotizadas ).draw();
+                $('#table-cotizadas-prods').DataTable().rows.add( objArrayCotizadas ).draw();
+
+                $("#noCotizadasNum").text( numNoCotizadas );
+                $("#cotizadasNum").text( numCotizadas );
+
+                // for (let i = 0; i < data.length; i++) {
+
+                //     if (data[i].solicitud != undefined) {
+
+                //         if( data[i].cotizacion == '-' ){
+
+                //             noCotizadasNum++;
+                //             $('#table-no-cotizadas-prods').DataTable().row.add([
+                //                 timeConverter(data[i].solicitud.Timestamp),
+                //                 data[i].solicitud.Folio,
+                //                 '<a href="' + `${url}/?uuid=${data[i].ventaUuid}` + '" target="_blank"> <span class="material-icons">info</span> </a>',
+                //             ]).draw();
+
+                //         }else{
+
+                //             cotizadasNum++;
+
+                //             Object.entries(data[i]['cotizacion']['Cotizaciones']).forEach( ([ key, {total, Timestamp, divisa} ]) => {
+
+                //                 if( !key.includes('-') ){
+
+                //                     const rowNode = $('#table-cotizadas-prods').DataTable().row.add([
+                //                         timeConverter(Timestamp),
+                //                         formatterMoney(divisa, total),
+                //                         '<a href="' + `${url.replace( 'solicitudes', 'cotizaciones' )}/?uuid=${data[i].ventaUuid}` + '" target="_blank"> <span class="material-icons">info</span> </a>',
+                //                     ]).draw().node();
+                //                     $(rowNode).find('td').eq(0).css('width','30%');
+                                    
+                //                 }
+
+                //             });
+
+                //             $("#searchCotizadasResultGroup").append('<li class="list-group-item">' + data[i].solicitud + '</li>');
+                //         }
+                        
+                //     }
+                // }
+
+            }, rej => {});
+
+            // fetch("/getProductVentas", {
+            //         method: "POST",
+            //         headers: {
+            //             Accept: "application/json",
+            //             "Content-Type": "application/json",
+            //             "CSRF-Token": Cookies.get("XSRF-TOKEN"),
+            //         },
+            //         body: JSON.stringify({
+            //             arrayVentas: arrayVentas
+            //         }),
+            //     })
+            //     .then(response => response.json())
+            //     .then(function(data) {
+
+                    
+                    
+            //     });
+        }
+
+    });
+
+    $( document ).on( 'click', '#tableBusquedaAvanzadaProductos > tbody > tr > td.add_producto_existente', function(){
+
+        const index = $(this).index();
+
+        const { uuid, Descripcion, Referencia, Observaciones, informacionAdicional, img, unidadMedida, uuidImgs } = $('#tableBusquedaAvanzadaProductos').DataTable().rows().data().toArray()[index];
+
+        $('#solicitudDescripcion').val( Descripcion );
+        $('#solicitudReferencia').val( Referencia );
+        $('#solicitudMedida').val( unidadMedida );
+        $('#solicitudInfoAdicional').val( informacionAdicional );
+        $('#solicitudComentarios').val( Observaciones );
+
+        $("#checkboxTag").removeClass("hide");
+        $("#solicitudDescripcion").prop("disabled", true);
+        $("#borrar-producto-agregado").removeClass("hide");
+        
+        $('#nuevaSolicitud').modal().data({ uuidProductoBuscado: uuid });
+
+        let carouselObj = '';
+
+        for ( const imgObj of ( uuidImgs || [] ) ) {
+
+            const { uuidImage, nombre } = imgObj;
+
+            const imgUrl = '../images/' + uuid + '/' + uuidImage + '.png';
+            
+            carouselObj += `<div class="carousel-item" meta-uuid="${ uuidImage }" meta-name="${ nombre }" meta-prod-uuid="${uuid}">
+                    <img src="../images/${uuid}/${ uuidImage }.png" class="d-block w-100 img-carrusel" alt="...">
+                </div>`;
+
+        }
+
+        if( ( uuidImgs || [] ).length === 0 ){
+
+            carouselObj = `<div class="carousel-item">
+                            <img src="../public/assets/images/other/no-image.jpeg" class="d-block w-100 img-carrusel" alt="...">
+                        </div>`;
+
+        }
+
+        $('#img-container-carousel').html( carouselObj );
+        $('.carousel-item:eq(0)').addClass( 'active' );
+
+    });
+
+    $( document ).on('click', '.ver-solicitud-btn', function( event ){
+
+        $('#table-productos-ver').DataTable().clear().draw();
+
+        const tr = $( this ).closest('tr').index();
+        const { uuidVenta } = $('#table-solicitud').DataTable().rows().data().toArray()[tr];
+        
+        verSolicitudFunction( uuidVenta, null );
+
+    });
+
+
+    $('#checkboxTagInput').change(function() {
+
+        if (this.checked) {
+
+            $("#nombreOriginalProducto").removeClass('hide')
+            $("#nombreOriginalProducto").text($("#solicitudDescripcion").val())
+            $("#solicitudDescripcion").val('')
+            $("#solicitudDescripcion").prop("disabled", false);
+
+        } else {
+
+            $("#solicitudDescripcion").val($("#nombreOriginalProducto").text())
+            $("#nombreOriginalProducto").addClass('hide')
+            $("#solicitudDescripcion").prop("disabled", true);
+        
+        }
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al dar click en el botón de buscar producto en la sección de busqueda avanzada.                                                         *
+     *   @func Se limpia la tabla de resultados de busqueda y se manda a llamar al socket de Solicitudes que busca los productos que coincidan con el valor del input de    *
+     *         Descripción/Alias.                                                                                                                                           * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $("#busquedaAvanzadaButton").click( async function(event) {
+
+        const query = $('#busquedaProductoAvanzadaInput').val();
+
+        $('#tableBusquedaAvanzadaProductos').DataTable().clear().draw();
+
+        const arrayDataProds = await asyncPostAjax( '/filtroBusquedaAvanzada', { query } );
+
+        const nodes = $('#tableBusquedaAvanzadaProductos').DataTable().rows.add( arrayDataProds ).draw().nodes();
+
+        $( nodes ).addClass('row-result');
+
+        $('#busquedaProductoAvanzadaInput').val('');
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al dar click en el boton de eliminar producto en la tabla de productos en Nueva Solicitud.                                              *
+     *   @func Se borra la row y la información del producto.                                                                                                               * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $( document ).on( 'click', '.delete-product' ,function(){
+
+        $('#tableSolicitudProductos').DataTable().row($(this).parents('tr')).remove().draw();
+
+    });
+    
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al dar click en el boton de editar producto en la tabla de productos en Nueva Solicitud.                                                *
+     *   @func Se agarran todos los valores de la fila que se quiere editar, se abre el collapse del producto y se rellenan los inputs necesarios.                          * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $( document ).on( 'click', '.edit-product' ,function(){
+
+        $('#SolicitudProdZone').addClass('show');
+        $('#button-collapse-new-product').addClass('hide');
+
+        const row = $(this).parent().parent().index();
+
+        var { Descripcion, unidadMedida, Cantidad, informacionAdicional, Observaciones } = $('#tableSolicitudProductos').DataTable().rows().data().toArray()[ row ];
+
+        // $('#select-tags-num-solicitud').val(rowData[6])
+        // $('#select-tags-num-solicitud').trigger('change');
+        $("#solicitudDescripcion").val( Descripcion )
+        $("#solicitudMedida").val( unidadMedida )
+        $("#solicitudCantidad").val( Cantidad )
+        $("#solicitudInfoAdicional").val( informacionAdicional )
+        $("#solicitudComentarios").val( Observaciones )
+        
+        const img = $('#tableSolicitudProductos tbody tr').eq( row ).find('td').eq(0);
+
+        // if ( img != "No image data") {
+            
+        //     const imgs = $(img).find('a');
+
+        //     if (imgs.length > 0) {
+
+        //         imgs.each(function(index, element) {
+
+        //             const base64Img = $(element).attr("href").split(',')[1];
+        //             let fileName = $(element).attr('meta-name');
+
+        //             if( fileName === 'undefined' ){
+
+        //                 fileName = `Imagen ${index}`
+
+        //             }
+
+        //             const file = new File([base64toBlob(base64Img, 'image/png')], fileName, base64toBlob(base64Img, 'image/png'));
+        //             myDropzone.addFile(file);
+
+        //         });
+        //     }
+            
+        // }
+        
+        $('#tableSolicitudProductos').DataTable().row( $(this).parents('tr') ).remove().draw();
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al escribir en un input con la clase error-on-input.                                                                                    *
+     *   @func Al cambiar el valor del input con dicha clase, se le remueve la clase.                                                                                       * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $( document ).on( 'change', '.error-on-input' ,function(){
+
+        $( this ).removeClass('error-on-input');
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al hacer click en el botón de agregar producto.                                                                                         *
+     *   @func Obtiene los inputs necesarios y verifica si hay imagenes en el dropzone, en caso de que sí tenga, las procesa y y agrega los tags correspondientes,          *
+     *         por ultimo agrega el objeto a la tabla para añadir un nuevo row.                                                                                             * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#AddProdSolicitud').click(function(){
+
+        if( validateFields( '#SolicitudProdZone' ) ){
+
+            const tagsArray = $('#solicitudFolio').val().split(',');
+            const Descripcion = $('#solicitudDescripcion').val();
+            const informacionAdicional = $('#solicitudInfoAdicional').val();
+            const Observaciones = $('#solicitudComentarios').val();
+            const unidadMedida = $('#solicitudMedida').val();
+            const Cantidad = $('#solicitudCantidad').val();
+            const numeroSolicitud = tagsArray.length == 1 ? $('#solicitudFolio').val() : $('#select-tags-num-solicitud').val();
+            const uuid = $('#nuevaSolicitud').modal().data().uuidProductoBuscado;
+            const hasAlias = $("#checkboxTagInput").is(':checked');
+            const Referencia = $('#solicitudReferencia').val();
+            const arrayImageUuids = [];
+
+            $('.carousel-item').each( ( index, elm ) => {
+
+                const uuid = $( elm ).attr('meta-uuid');
+
+                arrayImageUuids.push({ uuidImage:uuid });
+
+            });
+
+            console.log({arrayImageUuids})
+
+            const img = createImagesHtmlObject( arrayImageUuids, uuid );
+
+            $('#tableSolicitudProductos').DataTable().row.add({
+
+                img,
+                Descripcion,
+                informacionAdicional,
+                Cantidad,
+                Observaciones,
+                unidadMedida,
+                numeroSolicitud,
+                Referencia,
+                uuid,
+                hasAlias,
+                imgBase64Array: [],
+                btnEditar: '<span class="material-icons edit-product">edit</span>',
+                btnEliminar: '<span class="material-icons delete-product">delete</span>',
+
+            }).draw();
+
+            refreshFsLightbox();
+
+            limpiarCamposNewProdSoli();
+
+        }
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al hacer click en el botón de siguiente en el modal de Nueva Solicitud.                                                                 *
+     *   @func Se hace un post request a getCompradorEmail en caso de tener una respuesta exitosa se cambia el correo del comprador, se esconde el botón y se muestra el    *
+     *         el collapse.                                                                                                                                                 *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#SolicitudSiguienteBtn').click(function(){
+
+        const uuidComprador = $("#select-comprador option:selected").val();
+        const uuidEmpresa = $("#solicitudCliente option:selected").val();
+
+        $('#collapseFinSol').collapse('show');
+
+    });
+
+    $('#solicitudFolio').on('keypress', function(e){
+        e.preventDefault();
+    });
+
+    // $('#solicitudFolio input').on('keypress', function(e){
+    //     if (e.keyCode == 13){
+    //         e.keyCode = 188;
+    //         e.preventDefault();
+    //     };
+    // });
+
+    /* $('#registro-solicitud-btn').click( function(){
+
+        $('#registro-solicitud-form').submit();
+
+    });
+ */
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al hacer click en el botón de Generar cotización.                                                                                       *
+     *   @func Se verifica que esté marcada el checkbox de 'Estoy de acuerdo', si no lo está, no hace lo demás y suelta una alerta que te dice que tienes que marcarla      *
+     *         en caso de que sí esté marcada, se le agrega lo que le falte al objeto para hacer un post request a -registroSolicitud-.                                     *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#registro-solicitud-form').submit(function( e ){
+
+        $("#registro-solicitud-btn")
+        const button = new loadingButton("#registro-solicitud-btn","...Enviando");
+        button.start();
+        e.preventDefault();
+
+        const dataserialized = $(this).serializeArray();
+
+        const data = {};
+        data.Info = {};
+
+        dataserialized.forEach( ({ name, value }) => {
+
+                data['Info'][ name ] = value;
+
+        });
+
+        const { text, value } = getSelect2Values( '#select-comprador' );
+        const { text: text2, value: value2 } = getSelect2Values( '#select-usuario' );
+
+        data['Info'].clienteNombre = text == '' ? undefined : text;
+        data['Info'].usuarioNombre = text2 == '' ? undefined : text2;
+
+        console.log({ data });
+
+        postAjax( '/registroSolicitud', data, ( res )=> {
+
+            const { respuesta, Info } = res;
+
+            const { Message, InputsError, Type, data } = respuesta.Response;
+            showNotification( Type, Message )
+
+            if( Type == 'success' ){
+
+                const { UUID } = Info;
+                
+                cleanModalNuevaSolicitud( '#nuevaSolicitud', '#registro-solicitud-form' );
+                window.location.replace(`http://localhost:3000/ventas/?uuid=${UUID}`);
+
+            }
+
+            button.stop();
+
+        });
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al cambiar el valor de uno de los inputs con la clase required-change.                                                                  *
+     *   @func Al cambiar el valor de uno de los inputs se verifica si los demás tienen un valor diferente de vacio, en caso de ser así, se habilita el botón.              * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('.required-change').on( 'change', function(){
+
+        let pass = true;
+
+        $('.required-change').each( ( index, element ) => {
+
+            $( element ).val() === '' ? pass = false : null;
+
+        });
+
+        pass ? $('#button-collapse-new-product').prop('disabled', false) : $('#button-collapse-new-product').prop('disabled', true);
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al dar click en el botón nuevo producto.                                                                                                *
+     *   @func Oculta el mismo botón ( Nuevo producto ) añadiendo la clase Hide                                                                                             *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#button-collapse-new-product').click(function(){
+
+        $(this).addClass('hide');
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al dar click en el botón de cancelar cuando estás creando un nuevo producto en el modal 'Nueva solicitud'                               *
+     *   @func Manda a llamar a la función -limpiarCamposNewProdSoli- que es la encargada de cerrar el collapse y limpiar los campos de nuevo producto                      *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#cancelar-nuevo-producto').click(function(){
+
+        $('#button-collapse-new-product').removeClass('hide');
+        limpiarCamposNewProdSoli();
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al cambiar de página en la DataTable principal de la vista de solicitudes.                                                              *
+     *   @func Checa se la página a la que cambió es la última, en caso de así serlo, agrega los timestamps a un array para así obtener el más pequeño, después de eso,     *
+     *         manda a llamar a -actualizarTablaSolicitudes- mandandole el timestamp más viejo - 1 para no agarrar el que está en la tabla y el timestamp de la fecha de    *
+     *         inicio del filtro.                                                                                                                                           *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#table-solicitud').on('page.dt', function() {
+
+        const info = $('#table-solicitud').DataTable().page.info();
+
+        if (info.page + 1 == info.pages) {
+
+            var data = $('#table-solicitud').DataTable().rows().data().toArray();
+            var startDate = $('#datefilterto').data('daterangepicker').startDate.toDate().getTime();
+            var oldestTimeArray = new Array();
+
+            for (var i = 0; i < data.length; i ++){
+                
+                oldestTimeArray.push(data[i].Timestamp);
+
+            }
+            
+            actualizarTablaSolicitudes( oldestTimeArray.min() - 1, startDate);
+
+        }
+
+    });
+
+     /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al cambiar los tabs de la página principal                                                         *
+     *   @func Sirve para cargar las tablas y la información según se necesite.                                                                                                                                           *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+
+    $('#solicitudesTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (event) {
+        const tabSelected = $( event.target ).attr( "aria-controls" ) ;
+        const filtroEstado = $('#solicitudesTabs .nav-link.active').attr( "aria-controls" );
+        console.log(filtroEstado);
+        //Primero revisar si la datatable esta vacía antes de volver a cargar
+        if(tabSelected == "cotizado"){
+
+            load_More( filtroEstado, $('#table-cotizado').DataTable(), '/loadTable', $('#cotizado')[0] );
+            
+        }
+        else if(tabSelected == "sin_cotizar"){
+
+            load_More( filtroEstado, $('#table-solicitud').DataTable(), '/loadTable', $('#container-table') );
+            
+        }
+        else if(tabSelected == "ordenes-compra"){
+
+            load_More( filtroEstado, $('#table-orden-compra').DataTable(), '/loadTable', $('#ordenes-compra')[0] );
+
+        }
+        else if(tabSelected == "declinado"){
+
+            load_More( filtroEstado, $('#table-declinado').DataTable(), '/loadTable', $('#declinado')[0] );
+
+        }
+        
+    });
+
+    $("#table-orden-compra").on("click",function(e){
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) )
+
+        const rowData = row.data()
+        const target = $(e.target);
+        console.log( target.prop("tagName") );
+
+        if(target.prop("tagName") != "I" && target.prop("tagName") != "TH" ){
+            console.log(rowData.UUID)
+            window.location.href = `/ventas/?uuid=${rowData.UUID}`;
+            
+        }else{//AQUI POR SI DAN CLIC EN BOTONES
+            
+        }
+
+    });
+
+    $("#table-cotizado").on("click",function(e){
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) )
+
+        const rowData = row.data()
+        const target = $(e.target);
+        console.log( target.prop("tagName") );
+
+        if(target.prop("tagName") != "I" && target.prop("tagName") != "TH" ){
+            console.log(rowData.UUID)
+            window.location.href = `/ventas/?uuid=${rowData.UUID}`;
+            
+        }else{//AQUI POR SI DAN CLIC EN BOTONES
+            
+        }
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al dar clic en la tabla de solicitudes                                                      *
+     *   @func Sirve para redirigir al usuario a la solicitud                                                                                                                                        *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+
+     $("#table-solicitud").on("click",function(e){
+        const row = $(e.delegateTarget).DataTable().row( $(e.target).closest( "tr" ) )
+
+        const rowData = row.data()
+        const target = $(e.target);
+        console.log( target.prop("tagName") );
+
+        if(target.prop("tagName") != "I" && target.prop("tagName") != "TH" ){
+            console.log(rowData.UUID)
+            window.location.href = `/ventas/?uuid=${rowData.UUID}`;
+            
+        }else{//AQUI POR SI DAN CLIC EN BOTONES
+            
+        }
+
+    });
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Evento que se detona al seleccionar una opcion de empresa en nueva solicitud                                                      *
+     *   @func Sirve para mostrar opciones del dropdown de división                                                                                                                                        *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    $('#solicitudCliente').on('select2:select', async function (e) {
+        
+        // var data = e.params.data;
+        // const divisionData = await asyncPostAjax( '/getDivisiones', { data } );
+        // console.log(divisionData);
+
+        // $("#division-empresa").empty().trigger("change");
+        // const newOption = new Option("", "", true, true);
+        // $('#division-empresa').append(newOption).trigger('change');
+
+        // if(divisionData.length > 0){
+        //     $("#collapseDivision").collapse("show");
+        //         divisionData.forEach(element => {
+        //         const newOption = new Option(element.text, element.id, false, false);
+        //         $('#division-empresa').append(newOption).trigger('change');
+        //     });
+        // }else{
+        //     $("#collapseDivision").collapse("hide");
+        // }
+        
+    });
+
+    
+    
+    $( document ).ready( function(){
+
+        loadEmpresas();
+        checkParams();
+
+    });
+
+    
+
+</script>

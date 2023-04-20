@@ -1,0 +1,690 @@
+<script>
+
+    $('.clienteCheckBox').on( 'change', function(){
+
+        $('#select-comprador').val( null ).trigger('change');
+
+    });
+
+    $('#registro-solicitud-form').submit(function( e ){
+
+        const button = new loadingButton("#editar-solicitud-btn","...Enviando");
+        button.start();
+        e.preventDefault();
+
+        const dataserialized = $(this).serializeArray();
+
+        const data = {};
+        data.Info = {};
+
+        dataserialized.forEach( ({ name, value }) => {
+
+                data['Info'][ name ] = value;
+
+        });
+
+        const { text, value } = getSelect2Values( '#select-comprador' );
+        const { text: text2, value: value2 } = getSelect2Values( '#select-usuario' );
+
+        data['Info'].clienteNombre = text == '' ? undefined : text;
+        data['Info'].usuarioNombre = text2 == '' ? undefined : text2;
+        data['Info'].uuid = getParam( 'uuid' );
+
+        console.log({ data });
+
+        postAjax( '/editarSolicitud', data, ( res )=> {
+
+            const respuesta = res;
+
+            const { Message, InputsError, Type, data } = respuesta.Response;
+            showNotification( Type, Message )
+
+            if( Type == 'success' ){
+                
+                // cleanModalNuevaSolicitud( '#nuevaSolicitud', '#registro-solicitud-form' );
+                window.location.reload();
+
+            }
+
+            button.stop();
+
+        });
+
+    });
+    
+    $('#editar-solicitud-btn').click( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        const data = await asyncPostAjax( '/getSolicitudDetails', { uuidVenta } );
+
+        const { empresa, empresaTable, cliente, numeroDeSolicitud, fechasolicitud, UUID, usuario, division, divisionNombre } = data;
+
+        const { nombre: clienteNombre, uuid: uuidCliente } = cliente || {};
+        const { nombre: usuarioNombre, uuid: uuidUsuario } = usuario || {};
+
+        $('#solicitudCliente').append( new Option( empresaTable, empresa, true, true) ).trigger('change');
+        $('#select-comprador').append( new Option( clienteNombre, uuidCliente, true, true) ).trigger('change');
+        $('#select-usuario').append( new Option( usuarioNombre, uuidUsuario, true, true) ).trigger('change');
+        $('#division-empresa').append( new Option( divisionNombre, division, true, true) ).trigger('change');
+
+        const numerosSolicitudArray = numeroDeSolicitud.split(',');
+
+        for( const numeroDeSolicitud of numerosSolicitudArray ){
+
+            $('#solicitudFolio').tagsinput('add', numeroDeSolicitud);
+
+        }
+
+        flatpickrObj.setDate( fechasolicitud );
+
+    });
+
+    $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+
+        if( settings.nTable.id == "table-productos" ){
+
+            const numFilter =$('#folioClienteSelect').val();
+
+            const rowData = $('#table-productos').DataTable().row( dataIndex ).data();
+            const { numeroSolicitud } = rowData;
+
+            if( numeroSolicitud == numFilter || numFilter == 'todos' ){
+
+                return true;
+
+            }
+
+            return false;
+
+        }
+
+    });
+    
+    $('#folioClienteSelect').on( 'change', function(){
+
+        $('#table-productos').DataTable().draw();
+
+    });
+
+    $('#confirmar-borrar-partida-btn').click( async function(e){
+
+        const buttonDom = e.target;
+        const button = new loadingButton($(buttonDom),"...Guardando");
+        button.start();
+
+        const { rowIndex } = $('#borrar-partida-confirmacion').data();
+
+        const { uuid } = $('#table-productos').DataTable().row( rowIndex ).data();
+
+        const uuidVenta = getParam('uuid');
+
+        const { respuesta } = await asyncPostAjax( '/borrarProducto', { uuid, uuidVenta } );
+
+        const{ Response } = respuesta;
+
+        showNotification( Response.Type, Response.Message );
+        button.stop();
+
+        if( Response.Type == 'success' ){
+
+            $('#table-productos').DataTable().row( rowIndex ).remove().draw();
+
+            $('#borrar-partida-confirmacion').modal('hide');
+
+        }
+
+    });
+
+    $( document ).on( 'click', '.eliminar-prod-btn', function(){
+
+        const rowIndex = $( this ).closest('tr').index();
+
+        $('#borrar-partida-confirmacion').modal('show');
+
+        $('#borrar-partida-confirmacion').data({ rowIndex });
+
+    });
+
+    $('#editar-producto-form').submit( async function( e ){
+
+        e.preventDefault();
+
+        const buttonDom = e.originalEvent.submitter;
+        const button = new loadingButton($(buttonDom),"...Guardando");
+        button.start();
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const { rowIndex } = $('#editar-partida').data();
+
+        const { uuid } = $('#table-productos').DataTable().row( rowIndex ).data();
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const { id, text } = $('#unidadMedida-edit').select2('data')[0];
+
+        formObj.unidadMedida = id;
+
+        formObj['uuidVenta'] = getParam('uuid');
+        formObj['uuid'] = uuid;
+
+        console.log('editar prod')
+        console.log({ formObj })
+
+        disabled.attr('disabled','disabled');
+
+        const res = await asyncPostAjax( '/editarProducto', formObj );
+        const { respuesta, productoData } = res;
+
+        const { Type, Message } = respuesta.Response;
+
+        console.log({ productoData });
+
+        if( Type == 'success' ){
+
+            $('#table-productos').DataTable().row( rowIndex ).data({ ...productoData, imagen: 'No image data' });
+
+            clearModalAndClose( '#editar-partida', '#editar-producto-form' );
+            location.reload();
+
+        }
+        button.stop();
+
+
+        showNotification( Type, Message );
+
+    });
+
+    $( document ).on( 'click', '.editar-prod-btn', function(){
+
+        const rowIndex = $( this ).closest('tr');
+
+        const prodData = $('#table-productos').DataTable().row( rowIndex ).data();
+        const { descripcion, descripcionCliente, cantidad, unidadMedidaUuid, unidadMedidaNombre, referencia, numeroParte, numeroAlterno, numeroSolicitud } = prodData;
+
+        $('#descripcion-cliente-edit').val( descripcionCliente );
+        $('#cantidad-edit').val( cantidad );
+        $('#descripcion-edit').val( descripcion );
+
+        var newOption = new Option( unidadMedidaNombre, unidadMedidaUuid, false, false);
+        $('#unidadMedida-edit').append( newOption ).trigger('change');
+
+        $('#numero-solicitud-edit').val( numeroSolicitud ).trigger('change');
+
+
+        $('#referencia-edit').val( referencia );
+        $('#numero-parte-edit').val( numeroParte );
+        $('#numero-alterno-edit').val( numeroAlterno );
+
+        $('#editar-partida').modal('show');
+        $('#editar-partida').data({ rowIndex });
+
+    });
+
+    $('#productoNoExiste').on( 'change', function(){
+
+        if(this.checked) {
+
+            $('#productInfo').collapse('show');
+            $('#collapse-historial').collapse('hide');
+            $('#productSearch').val( null ).trigger('change');
+
+        } else{
+
+            $('#productInfo').collapse('hide');
+
+        }
+
+    });
+
+    $('#seleccionar-prod').on( 'click', async function(){
+
+        $('#container-no-existe').addClass('hide');
+        $('#productInfo').collapse('show');
+        $('#collapse-historial').collapse('hide');
+
+        const uuidProducto = $('#productSearch').val();
+
+        const producto = await asyncPostAjax( '/getProductInfo', { productID: uuidProducto } );
+
+        const { referencia, unidadMedida, unidadMedidaNombre, descripcion, numeroAlterno, numeroParte } = producto;
+
+        $('#referencia').val( referencia );
+        $('#descripcion').val( descripcion );
+        $('#numero-parte').val( numeroParte );
+        $('#numero-alterno').val( numeroAlterno );
+        $('#referencia').prop( 'disabled', true );
+        $('#descripcion').prop( 'disabled', true );
+        $('#numero-parte').prop( 'disabled', true );
+        $('#numero-alterno').prop( 'disabled', true );
+        $('#unidadMedida').prop( 'disabled', true );
+
+        const data = {
+            id: unidadMedida,
+            text: unidadMedidaNombre,
+        };
+
+        const newOption = new Option(data.text, data.id, false, false);
+        $('#unidadMedida').append(newOption).trigger('change');
+
+    });
+
+    $( "#agregar-partidas" ).on('shown.bs.modal', function(){
+        
+        if( $('#productoNoExiste').is(":checked") ) $('#productoNoExiste').click();
+
+
+    });
+
+    $('#productInfo').on('show.bs.collapse hide.bs.collapse', function (e) {
+
+        if (e.type == 'show') {
+
+            console.log('entra');
+
+        
+        } else {
+        
+            console.log('modal desmostrao')
+        
+        }
+
+    });
+
+
+    $('#confirmar-soli-btn').on( 'click', async function(e){
+
+        const buttonDom = e.target;
+        const button = new loadingButton($(buttonDom),"...Confirmando");
+        button.start();
+        
+
+        const isSendMail= !$("#isSendMail").is(":checked");
+
+        var mailListing = $("#mailList").data('mailList') ?? [];
+
+        const mensajeExtra = $("#mensajeExtra").val();
+        console.log(mensajeExtra)
+
+        const uuidVenta = getParam( 'uuid' );
+
+        console.log($('#generar-solicitud').data())
+
+        const result = await asyncPostAjax( '/confirmarSolicitud', { uuidVenta, isSendMail, mailListing, mensajeExtra } );
+
+        const { Type, Message } = result.Response;
+        showNotification(Type,Message)
+
+        if( Type == 'success' ){
+
+            location.reload();
+
+        }
+
+        button.stop()
+
+
+    });
+    
+    $('#generar-solicitud-btn').on( 'click', async function(){
+        
+        const uuidVenta = getParam( 'uuid' );
+
+        const { Response } = await asyncPostAjax( '/validarSolicitud', { uuidVenta } );
+
+
+
+        if( Response.Type == 'success' ){
+
+            $('#generar-solicitud').modal('show');
+
+        }else{
+            
+            showNotification( Response.Type, Response.Message );
+
+        }
+
+    });
+
+     /************************************************************************************************************************************************************************
+     *                                                                                                                                                                       *
+     *   @desc Evento que se detona cuando se da click al botón de info al lado del nombre de cada solicitud                                                                 *
+     *   @func Sirve para mostrar la información de cada solicitud                                                                                                           *                                                                      *
+     *                                                                                                                                                                       *
+     *************************************************************************************************************************************************************************/
+     $('#btnInfoSolicitudes').on('click',async function(e){
+
+        const uuidVenta = getParam( 'uuid' );
+        const { ventaInfo, productos } = await asyncPostAjax( '/getVenta', { uuidVenta } );
+        const {  cliente: uuidCliente, empresa: uuidEmpresa, division, fecharecepcion, fechasolicitud, fechaCotizacion, 
+                 folioOrdenDeCompra, folioSolicitud, numeroDeSolicitud, folioCotizacion } = ventaInfo;
+
+        division != '' ? $("#liDivision").attr( 'style', 'display: block;' ) : $("#liDivision").attr( 'style', 'display: none !important;' );
+
+        const empresaName = await asyncPostAjax( '/getEmpresasName', { uuids: [uuidEmpresa] } );
+        const compradorName = await asyncPostAjax( '/getCompradorName', { uuids: [uuidCliente] } );
+
+        $("#Preview_empresa").text( empresaName[0].nombre );
+        $("#Preview_division").text( division );
+        $("#Preview_cliente").text( compradorName[0].nombre );
+        $("#Preview_fcRecepcion").text( fecharecepcion );
+        $("#Preview_fcSolicitud").text( fechasolicitud );
+        $("#Preview_foCotizacion").text( folioCotizacion );
+        $("#Preview_foOrdenCompra").text( folioOrdenDeCompra );
+        $("#Preview_foSolicitud").text( folioSolicitud );
+        $("#Preview_nuSolicitud").text( numeroDeSolicitud );
+
+    });
+
+
+    const userData = JSON.parse( '<%- JSON.stringify( userData ) %>' );
+
+    $('#productSearch').on( 'change', async function(){
+
+        const uuidProducto = $(this).val();
+        $('#historial-container').data({ lastDoc: false });
+        $('#historial-container').empty();
+
+        if( uuidProducto ){
+        
+            loadMoreHistorial();
+            $('#collapse-historial').collapse('show');
+            $('#productoNoExiste').prop( 'checked', false );
+            $('#productInfo').collapse('hide');
+
+        }else{
+
+            $('#collapse-historial').collapse('hide');
+            $('#productInfo').collapse('hide');
+            $('#container-no-existe').removeClass('hide');
+
+        }
+
+    });
+
+    $('#productSearch').on( 'select2:clear', function(){
+
+        $('#productSearch').select2("close");
+
+    });
+
+    $('#productSearch').select2().on('select2:unselecting', function() {
+        
+        $(this).data('unselecting', true);
+
+    }).on('select2:opening', function(e) {
+        
+        if ($(this).data('unselecting')) {
+        
+            $(this).removeData('unselecting');
+            e.preventDefault();
+        
+        }
+
+    });
+
+    $('#nuevo-producto-form').submit( async function( e ){
+        e.preventDefault()
+        const buttonDom = e.originalEvent.submitter; //Botón que  detono el evento submit
+        const button = new loadingButton($(buttonDom),"...Enviando") ;
+        button.start();
+                
+        const uuidProducto = $('#productSearch').val();
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const serializedData = $(this).serializeArray();
+
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+
+        formObj['uuidVenta'] = getParam('uuid');
+        formObj['uuidProducto'] = uuidProducto;
+
+        disabled.attr('disabled','disabled');
+
+        console.log({ formObj })
+
+        const res = await asyncPostAjax( '/registrarProducto', formObj );
+
+        const { respuesta, prodAux: productoData } = res;
+
+        const { Message, Type } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            $('#productSearch').val( null ).trigger('change');
+            $('#table-productos').DataTable().row.add({ ...productoData, imagen: 'No image data', unidadMedidaUuid: productoData['unidadMedida'] }).draw();
+            clearModalAndClose( '#agregar-partidas', '#nuevo-producto-form' );
+
+            const { numerosSolicitud } = $('#agregar-partidas').data();
+
+            if( numerosSolicitud.length == 1 ){
+
+                $('#numero-solicitud').prop( 'disabled', false );
+                $("#numero-solicitud").val($("#numero-solicitud option:first").val()).trigger('change');
+                $('#numero-solicitud').prop( 'disabled', true );
+
+            }
+
+        }
+        button.stop();
+
+        showNotification( Type, Message );
+            
+    });
+
+    $( document ).ready( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        const numerosSolicitud = await asyncPostAjax( '/getNumerosSolicitud', { uuidVenta } );
+
+        $('#agregar-partidas').data({ numerosSolicitud });
+            
+        for( const numero of numerosSolicitud ){
+
+            var newOption = new Option(numero, numero, false, false);
+            var newOption2 = new Option(numero, numero, false, false);
+            var newOption3 = new Option(numero, numero, false, false);
+            $('#numero-solicitud').append(newOption);
+            $('#folioClienteSelect').append(newOption2);
+            $('#numero-solicitud-edit').append( newOption3 );
+
+        }
+
+        $('#folioClienteSelect').val('todos').trigger('change');
+
+        if( numerosSolicitud.length < 2 ){
+
+            console.log('entra mayor 2')
+            $('#numero-solicitud').prop( 'disabled', true );
+            // $('#numero-solicitud-edit').prop( 'disabled', true );
+
+        }else{
+
+            console.log('enrta else mayor 2')
+            $('#numero-solicitud').val( null ).trigger('change');
+
+        }
+
+    });
+
+
+
+    $( document ).on('click','#btnOpcionComentario' ,async function(e){
+
+        const uuidVenta = getParam('uuid');
+
+        cargarComentarios ( uuidVenta );
+
+    });
+
+/* $( document ).on('click', '#btnGuardarComentario', async function( e ){
+
+    const formObj = {};
+
+    const urlParams = new URLSearchParams(window.location.search);
+
+    const uuidVenta = getParam('uuid')
+
+    formObj['uuidVenta'] = uuidVenta;
+    formObj['uuidUsuario'] = userData.user_id;
+    formObj['comentario'] = $('#comentario-solicitud-text').val();
+
+    postAjax( '/registroComentario', formObj, ( res )=> {
+
+        const { Message, InputsError, Type, data } = res.Response;
+        showNotification( Type, Message )
+
+        cargarComentarios ( uuidVenta );
+
+    }, ( rej )=>{
+
+        const { Message, InputsError, Type, data } = rej.Response;
+        showNotification( Type, Message );
+
+    });
+
+}); */
+
+// const cargarComentarios = ( uuidVenta ) => {
+
+// postAjax( '/getComentarios', { uuidVenta }, res => {
+
+//     res.sort(function(x, y){
+//         return y.timestamp._seconds - x.timestamp._seconds;
+//     })
+    
+//     var listaFinal = "";
+//     var elementList = "";
+
+//     res.forEach( doc => {
+
+//         var dateFormat= new Date( (doc.timestamp._seconds) * 1000 );
+
+//         var fecha = dateFormat.getDate()+
+//                     "/"+(dateFormat.getMonth()+1)+
+//                     "/"+dateFormat.getFullYear()+
+//                     " "+dateFormat.getHours()+
+//                     ":"+dateFormat.getMinutes()+
+//                     ":"+dateFormat.getSeconds();
+
+//         elementList = `
+
+//                 <a  href="#" class="removerEste list-group-item list-group-item-action" aria-current="true">
+//                     <div class="d-flex w-100 justify-content-between">
+//                         <p class="mb-1">${doc.comentario}</p>
+//                         <small></small>
+//                     </div>
+//                     <div class="d-flex justify-content-between"> 
+//                         <small class="mb-1">${doc.uuidUsuario}</small>
+//                         <small class="userCom">${ fecha }</small>
+//                     </div>
+//                 </a>
+//             `;
+
+//         listaFinal+=  elementList ; 
+//     });
+
+//     $('#comentario-solicitud-text').val('');
+
+//     $('.removerEste').remove();
+
+//     $( ".listaComentarios" ).append( listaFinal );
+
+// });
+
+// }
+
+
+
+
+$("#addNewMail").click(function(){
+    const mail = $("#newmailInput").val();
+    if(mail && isValidEmail(mail)){
+        const listRow = document.createElement("li");
+        $(listRow).addClass("list-group-item d-flex justify-content-between")
+        const html =    `<span>${mail}</span>
+        
+                        <span class="material-icons-outlined remove text-danger">
+                        remove
+                        </span>
+        `
+        $(listRow).html(html);
+        $(listRow).data('mail',mail)
+
+        let mailArray = $("#mailList").data("mailList") ?? [];
+        mailArray.push(mail)
+        console.log({mailArray})
+        $("#mailList").data("mailList",mailArray); //Se almacena el array de correos introducidos
+
+
+        $("#mailList").append(listRow);
+        $("#newmailInput").val("");
+        $("#newmailInput").focus();
+
+
+    }
+})
+
+$("#mailList").on("click",".remove",function(e){
+    console.log("eliminar",e.target,e.delegateTarget);
+    const li = $(e.target).closest("li");
+    let nodes = Array.from( li.closest('ul').children() ); // get array
+    const index = li.index();
+    var mails = $(e.delegateTarget).data("mailList");
+   
+    mails.splice(index,1)
+    $(e.delegateTarget).data("mailList",mails)
+    $(li).remove();
+       
+
+})
+
+
+$("#isSendMail").on("change",function(e){
+    const isChecked = $(this).is(":checked");
+    if(isChecked){
+        $("#mailList").empty();
+        $("#mailList").data("mailList",undefined);
+        $("#newmailInput").prop("disabled",true);
+        $("#addNewMail").prop("disabled",true);
+        $("#mensajeExtra").prop("disabled",true);
+
+    }else{
+        $("#newmailInput").prop("disabled",false);
+        $("#addNewMail").prop("disabled",false);
+        $("#mensajeExtra").prop("disabled",false);
+
+    }
+
+})
+
+$("#newmailInput").on('keyup', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        $("#addNewMail").click();
+    }
+});
+</script>
+

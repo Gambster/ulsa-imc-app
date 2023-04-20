@@ -1,0 +1,82 @@
+<script>
+
+    $('#empresasTable').on( 'click', 'tbody tr', function(e){
+
+        const { uuid } = $(e.delegateTarget).DataTable().row( this ).data();
+
+        const url = get_hostname( window.location.href );
+
+        window.location.href =  `${url}/empresas/?uuid=${uuid}`;
+
+    });
+
+    $('#nueva-empresa-form').submit(async  function( e ){
+
+        e.preventDefault();
+
+        const dataSerialized = $( this ).serializeArray();
+        const objEmpresa = {};
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objEmpresa[ name ] = value;
+
+        }
+
+        const LugarEntregaSelect2 = $('#lugar-de-entrega').select2('data')[0];
+        const lugarDeEntregaName = LugarEntregaSelect2 != undefined ? LugarEntregaSelect2.text : "";
+
+        objEmpresa['lugarDeEntregaName'] = lugarDeEntregaName;
+
+        const pais = getSelect2Values('#selectPaises')
+        if(pais != undefined){
+            objEmpresa['paisName'] = pais.text;
+        }
+        const estado = getSelect2Values("#selectEstados");
+        if(estado != undefined){
+            objEmpresa['estadoName'] = estado.text;
+        }
+        
+        const {Response} = await asyncPostAjax("/registroEmpresa",objEmpresa)
+        showNotification(Response.Type,Response.Message)
+
+        if(Response.Type == "success"){
+            window.location.href = `/empresas/?uuid=${Response.Data.id}`;
+
+        }
+
+
+    });
+
+    
+
+    $('#selectPaises').on( 'change', async function(){
+
+        $( '#selectEstados' ).empty();
+        const id = $( this ).val();
+
+        if( !id ) return;
+
+        loadDataToSelect( '/getEstados', { id }, '#selectEstados' );
+
+    });
+
+    $( document ).ready( function(){
+
+        const lugaresDeEntrega = JSON.parse( '<%- JSON.stringify( lugaresDeEntrega ) %>' );
+        const condicionesDePago = JSON.parse( '<%- JSON.stringify( condicionesDePago ) %>' );
+        const dataPaises = JSON.parse( '<%- JSON.stringify( dataPaises ) %>' );
+
+        console.log({condicionesDePago})
+
+        loadDataToSelect( false, false, '#lugar-de-entrega', lugaresDeEntrega );
+        loadDataToSelect( false, false, '#condiciones-pago', condicionesDePago );
+        loadDataToSelect( false, false, '#selectPaises', dataPaises );
+
+    });
+
+
+    
+
+</script>

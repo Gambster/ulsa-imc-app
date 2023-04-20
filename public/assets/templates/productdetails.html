@@ -1,0 +1,108 @@
+<div class="row viewCotProdDetails">
+    <div class="container-img-cot col-2">
+        %imagesData%
+    </div>
+    <div class="col-5">
+        <h6>Información adicional</h6>
+        <p>%InfoAd%</p>
+    </div>
+    <div class="col-5">
+        <h6>Comentarios</h6>
+        <p>%Comentarios%</p>
+    </div>
+</div>
+<!--<div class="row viewCotProdDetails">
+    <div class="col-4">
+        <h6>Información adicional</h6>
+        <p>%InfoAd%</p>
+        <div class="row">
+            <div class="col-12">
+                <h6>Información adicional</h6>
+                <p>%InfoAd%</p>
+            </div>
+            <div class="col-12">
+                <h6>Comentarios</h6>
+                <p>%Comentarios%</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="row">
+            <div class="col-12">
+                <h6>Información de compra y envío</h6>
+                <table cellpadding="5" cellspacing="0" border="0" class="productDetTable" style="padding-left:0px; width:100%;">
+                    <tr>
+                        <td style="padding-left:0 !important;">Proveedor:</td>
+                        <td>
+                            <select class="form-select">
+                                <option selected>Proveedor 1</option>
+                                <option value="1">Proveedor 2</option>
+                            </select>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left:0 !important;">
+                            Flete: <a id="popover-info-flete" tabindex="0" class="" data-bs-placement="top" role="button" data-bs-toggle="popover" data-bs-trigger="hover"  title="" data-bs-content="Presiona ENTER o TAB para agregar un folio de solicitud." ><span id="info-popover-crear-soli" class="material-icons">info</span></a>
+
+                        </td>
+                        <td>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault1">
+                                <label class="form-check-label" for="flexRadioDefault1">
+                                    Individual
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="flexRadioDefault" id="flexRadioDefault2" checked>
+                                <label class="form-check-label" for="flexRadioDefault2">
+                                    Agrupado
+                                </label>
+                            </div>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-4">
+        <div class="row">
+            <div class="col-12">
+                <h6>Información de entrega</h6>
+                <table cellpadding="5" cellspacing="0" border="0" class="productDetTable" style="padding-left:0px; width:100%;">
+                    <tr>
+                        <td style="padding-left:0 !important; width: 100px;">Costo U.:</td>
+                        <td><input type="text" class="form-control costoCot" data-inputmask="'alias': 'numeric', 'groupSeparator': ',', 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'" inputmode="decimal" style="text-align: right;"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left:0 !important; width: 100px;"">Utilidad:</td>
+                        <td>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" placeholder="0">
+                                <span class="input-group-text utilidadCot">%</span>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="padding-left:0 !important; width: 100px;"">Precio U.:</td>
+                        <td><input disabled type="text" class="form-control precioCot" data-inputmask="'alias': 'numeric', 'groupSeparator': ',', 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0'" inputmode="decimal" style="text-align: right;"></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+ </div>-->
+ <script>
+     $('#popover-info-flete').popover({
+      //container: "body",
+      html: true,
+      content: function () {
+        return '<div class="popover-message">hola</div>';
+      },
+      container: $('#viewCot')
+    });
+ </script>
+             
+
+
+             

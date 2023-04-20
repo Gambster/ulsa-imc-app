@@ -1,0 +1,712 @@
+<script>
+
+    const calculateVistaPrevia = async (  ) => {
+        
+        $('#container-spinner').removeClass('hide');
+        $('#pdf-container').addClass('hide');
+
+        const uuidVenta = getParam('uuid');
+
+        const productosSinTiempoEntrega = await asyncPostAjax( '/getProductosSinTiempoEntrega', { uuidVenta, optionNumber } );
+
+        if( productosSinTiempoEntrega ){
+
+            $('#prods-sin-tiempo-entrega').text( productosSinTiempoEntrega );
+            $('#alerta-producto-sin-tiempo-entrega').removeClass('hide');
+
+        }else{
+
+            $('#alerta-producto-sin-tiempo-entrega').addClass('hide');
+
+        }
+
+        console.log({ productosSinTiempoEntrega })
+
+        const res = await asyncPostAjax( '/calcularTotalesCotizacion', { uuidVenta, optionNumber } );
+
+        const { total, totalFletes, numeroDeFletes, numeroDeOtros, subtotal, objProductos: productos, iva, objFletes , utilidadTotal, porcentajeMargenUtilidad } = res;
+
+        console.log("ADAL RAMONES");
+        console.log({ productos });
+
+        const divisa = $('.divisaCot').val();
+
+        $('#numeroDeFletes').text( numeroDeFletes );
+        $('#numeroDeOtros').text( numeroDeOtros );
+        $('#totalFletes').text( formatterMoney( divisa, totalFletes ) );
+        $('#totalCotizacion').text( formatterMoney( divisa, total ) );
+        $('#ivaCotizacion').text(`IVA: ${ formatterMoney( divisa, iva ) }`);
+        $('#margen-utilidad').text( formatterMoney( divisa, utilidadTotal ) );
+        $('#porcentaje-margen-utilidad').text( `${ porcentajeMargenUtilidad ?  porcentajeMargenUtilidad.toFixed( 2 ) : '0' }%` );
+
+        let { cotizacion } =  $('#card-container').data();
+
+        cotizacion = { 
+        
+            ...cotizacion,
+            total,
+            iva,
+            subtotal,
+
+        };
+
+        $('#card-container').data({ cotizacion });
+
+        const tiemposDeEntrega = await asyncPostAjax( '/getTiemposEntrega', { uuidVenta, optionNumber } );
+        
+        const doc = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+
+        const PdfContainer = document.getElementById('pdf-container');
+        
+        doc.getDataUrl((url)=>{
+            PdfContainer.setAttribute('src', url);
+        });
+
+        $('#container-spinner').addClass('hide');
+        $('#pdf-container').removeClass('hide');
+
+        console.log('aaa')
+        console.log({total})
+
+        if( total == 0 || total == '0' || !total ){
+
+            console.log('RETURN FALSE JAJA')
+
+            return false;
+
+        }
+
+        return true;
+
+    };
+
+    const loadFletes = async( ) => {
+
+        $('#fletesCot').DataTable().clear().draw();
+
+        const uuidVenta = getParam( 'uuid' );
+
+        const fletes = await asyncPostAjax( '/getFletes', { uuidVenta, optionNumber } );
+
+        const divisa = $('.divisaCot').val();
+
+        for await( let flete of fletes ){
+            
+            const { productos, unidadTiempo, tipoGasto, gasto, totalFlete, descripcionFleteImportacion, descripcionFleteIntl, descripcionFleteNtl, descripcionGasto } = flete;
+
+            const arrayDescFletes = [ descripcionFleteImportacion, descripcionFleteIntl, descripcionFleteNtl, descripcionGasto ].filter( elm => elm );
+            
+            if( arrayDescFletes.length > 1 && tipoGasto == 'flete' ){
+                
+                flete.descripcionFlete = 'Múltiple';
+                
+            }else if( arrayDescFletes.length <= 1 || tipoGasto == 'otro'  ){
+                
+                flete.descripcionFlete = arrayDescFletes[0];
+                
+            }
+
+            console.log({ arrayDescFletes })
+            
+            const gastoHtml = ( tipoGasto == 'flete' ) ? `${formatterMoney( divisa, totalFlete )} <span class="material-icons">
+                                        info
+                                      </span>` : formatterMoney( divisa, gasto );
+
+
+            const productosObj = productos.map( uuid => {  return { id: uuid } });
+
+
+            console.log({ flete });
+
+            await agregarFleteATabla( { ...flete, divisa, } );
+
+        }
+
+    };
+
+    const highlightSentence = ( sentence, query ) => {
+
+        sentence = sentence.toLowerCase();
+
+        const queryArray = query.split(' ');
+
+        for( let word of queryArray ){
+
+            word = word.toLowerCase();
+
+            sentence = sentence.replaceAll( word, `<strong>${word}</strong>` )
+
+        }
+
+        return sentence;
+    
+    };
+
+    const searchProduct = async ( descripcionCliente ) => {
+
+        const query = descripcionCliente;
+
+        const resultados = await asyncPostAjax( '/busquedaHistorial', { descripcionCliente: query } );
+
+        $('#lista-historial-ventas').empty();
+
+        if( resultados.length == 0 || !resultados ){
+
+            $('#lista-historial-ventas').append(`<strong> SIN RESULTADOS APA </strong>`);
+            return;
+
+        }
+
+        for( const venta of resultados ){
+
+            const { cotizacionData, prodData, solicitudData, mainCotizacionData } = venta;
+            const { fechaSolicitud  } = solicitudData;
+            const { descripcionCliente, descripcion, uuid } = prodData;
+            const { precioUnitario } = cotizacionData;
+            const { divisa } = mainCotizacionData;
+
+            const elmHtml = `
+            <div class="list-group-item list-group-item-action options-historial" aria-current="true" uuid="${uuid}">
+                <div class="row align-items-center">
+                    <div class="col-12 container-info-resultados">
+                        <small>24/11/2022</small>
+                        <p class="mb-1">Descripción interna: ${ highlightSentence( descripcion, query ) }</p>
+                        <p class="mb-1">Descripción cliente: ${ highlightSentence( descripcionCliente, query ) }</p>
+                        <h6 class="mb-1">${ formatterMoney( divisa, precioUnitario ) }</h6>
+                    </div>
+                    <div class="container-btns-resultados hide" >
+                        <div class="d-flex gap-2 flex-wrap justify-content-end">
+                            <button type="button" class="btn btn-info btn-style-light w-100">Información</button>
+                            <button type="button" class="btn btn-success btn-style-light w-100 seleccionar-prod-historial">Seleccionar</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+
+            $('#lista-historial-ventas').append( elmHtml );
+
+
+        }
+
+        $('#collapse-resultados-cot-prod').data({ resultadosProductos: resultados });
+
+    };
+
+    const isProdCot = async ( idSelect ) => {
+
+        const uuidVenta = getParam('uuid');
+        const { editMode } = $('#agregar-flete-modal').data();
+
+        const arrayOptions = await $( idSelect ).val();
+
+        const cotProds = [];
+
+        for await( const uuidProducto of arrayOptions ){
+
+            const existe = await asyncPostAjax( '/getProductosCotizados', { uuidVenta, uuidProducto, optionNumber } );
+
+            if( existe ) cotProds.push( uuidProducto );
+            else showNotification( 'warning', 'El producto no está cotizado' );
+
+        }
+
+        $( idSelect ).val( cotProds ).trigger('change');
+
+    };
+
+    const getInitials = (str) => {
+
+        // Dividimos el string en un array de palabras
+        let words = str.split(" ");
+
+        // Inicializamos el resultado con las primeras dos letras de la primera palabra
+        let result;
+
+        // Si hay más de una palabra, agregamos la primera letra de la segunda palabra
+        if (words.length > 1) {
+
+            result = words[0].charAt(0)
+            result += words[1].charAt(0);
+
+        }else{
+
+            result = words[0].substring(0, 2);
+
+        }
+
+        // Devolvemos el resultado
+        return result;
+
+    }
+
+    const agregarTiempoEntregaTable = async ( tiempoDeEntrega ) => {
+
+        $('#tiempos-entrega-table').DataTable().row.add( tiempoDeEntrega ).draw();
+
+    };
+
+    const loadTiempoEntrega = async (  ) => {
+
+        const uuidVenta = getParam('uuid');
+
+        $('#tiempos-entrega-table').DataTable().clear().draw();
+        
+        const tiemposDeEntrega = await asyncPostAjax( '/getTiemposEntrega', { uuidVenta, optionNumber } );
+        const { productos: prodsContainer } = $('#card-container').data();
+
+        let htmlIcons = '<div class="avatar-container">';
+        const colors = [ 'red', 'blue', 'purple', 'yellow', 'pink' ];
+        
+        let i = 0;
+
+        for( const tiempoDeEntrega of tiemposDeEntrega ){
+
+            const { productos, tiempoEntregaFromNum, tiempoEntregaToNum, unidadTiempo } = tiempoDeEntrega;
+
+            for( const uuidProducto of productos ){
+                
+                const { descripcion,  } = prodsContainer[ uuidProducto ];
+                const iniciales = getInitials( descripcion );
+
+                if( i < 4 ){
+
+                    htmlIcons += `<div class="avatar avatar-xs avatar-rounded avatar-productos">
+                                    <div class="avatar-title ${colors[i]}" data-bs-toggle="tooltip" data-bs-placement="top"  title="${descripcion}">${ iniciales }</div>
+                                </div>`;
+
+                }
+
+                i++;
+
+            }
+
+            if( productos.length > 4 ){
+
+                const prodsFaltante = productos.length - 4;
+
+                htmlIcons += `<div class="avatar avatar-xs avatar-rounded avatar-productos">
+                                <div class="avatar-title">+${ prodsFaltante }</div>
+                            </div>`;
+
+            }
+
+            htmlIcons += '</div>'
+
+            const tiempoEntrega = `De ${tiempoEntregaFromNum} a ${tiempoEntregaToNum} ${unidadTiempo}`;
+
+            agregarTiempoEntregaTable( { ...tiempoDeEntrega, productosHtml: htmlIcons, tiempoEntrega } )
+
+            i = 0;
+            htmlIcons = '<div class="avatar-container">';
+
+        }
+
+        
+
+    };
+
+    const agregarFleteATabla = ( data ) => {
+
+        let objFlete = { ...data };
+
+        const { gasto, descripcionGasto, tiempoEntregaFromNum, tiempoEntregaToNum, tiempoEntregaUni, lugarEntrega, fleteIntl, fleteImpo, fleteNtl, totalFlete, productos: uuidsProductos, checkboxLugarEntrega, uuidFlete, tipoGasto } = data;
+
+        let fleteProducts = "";
+        const { productos } = $('#card-container').data();
+        const colors = [ 'red', 'blue', 'purple', 'yellow', 'pink' ];
+        const divisa = $('.divisaCot').val();
+
+        let htmlIcons = '<div class="avatar-container">';
+        const productosData = [];
+
+        for( let i = 0; i < uuidsProductos.length; i++ ){
+
+            const id = uuidsProductos[i];
+
+            const { precioUnitario, cantidad, proveedor, utilidad, proveedorName, costoUnitario, descripcion } = productos[ id ];
+
+            productosData.push({ 
+                precioUnitario,
+                cantidad, 
+                proveedor, 
+                utilidad, 
+                proveedorName, 
+                costoUnitario, 
+                descripcion,
+                id
+            });
+
+            const iniciales = getInitials( descripcion );
+
+            if( i < 4 ){
+
+                htmlIcons += `<div class="avatar avatar-xs avatar-rounded avatar-productos">
+                                <div class="avatar-title ${colors[i]}" data-bs-toggle="tooltip" data-bs-placement="top"  title="${descripcion}">${ iniciales }</div>
+                              </div>`;
+
+            }
+
+            $(".productSelectCot option[value='" + uuidsProductos[i].id + "']").remove();
+
+        }
+
+        if( uuidsProductos.length > 4 ){
+
+            const prodsFaltante = uuidsProductos.length - 4;
+
+            htmlIcons += `<div class="avatar avatar-xs avatar-rounded avatar-productos">
+                              <div class="avatar-title">+${ prodsFaltante }</div>
+                          </div>`;
+
+        }
+
+        htmlIcons += '</div>'
+        
+
+        objFlete = {
+
+            ...objFlete,
+            productos: htmlIcons,
+            productosData,
+            gasto: objFlete.tipo == 'flete' ? `<div class="d-flex align-items-center gap-2">${formatterMoney( divisa, objFlete.gasto )}
+                                <span style="cursor: pointer;" class="material-icons-outlined info-gasto-flete">
+                                    info
+                                </span></div>` : formatterMoney( divisa, objFlete.gasto ),
+            icons: `<div class="d-flex justify-content-end align-items-center gap-2 to-show tableButtons" style="padding-left: 5px; padding-right: 5px;">
+                        <i  style="cursor:pointer; color:#61acfc;" class="material-icons-outlined Ttip editFlete" data-bs-toggle="tooltip" data-bs-placement="top" title="Editar">edit</i> 
+                        <i  style="cursor:pointer; color:#ff4857;" class="material-icons-outlined Ttip deleteFlete" data-bs-toggle="tooltip" data-bs-placement="top" title="Eliminar">delete</i> 
+                    </div>`,
+            
+        };
+
+        objFlete.tipoLabel = objFlete.tipo == "flete" ? `<h6><span class="badge badge-style-light badge-primary text-capitalize">${objFlete.tipo}</span></h6>` : `<h6><span class="badge badge-style-light badge-secondary text-capitalize">${objFlete.tipo}</span></h6>`;
+
+        $('#fletesCot').DataTable().row.add( objFlete ).draw();
+
+    };
+
+    const agregarFletesATable = ( data ) => {
+
+        console.log('ENTRA FLETES')
+
+        const { gasto, otroGastoCosto, descripcionGasto, tiempoEntregaFromNum, tiempoEntregaToNum, tiempoEntregaUni, lugarEntrega, divisa, fleteIntl, fleteImpo, fleteNtl, totalFlete, selections, checkboxLugarEntrega, uuidFlete, tipoGasto } = data;
+
+        console.log({ gasto })
+
+        let fleteProducts = "";
+        const { productos } = $('#card-container').data();
+        const colors = [ 'red', 'blue', 'purple', 'yellow', 'pink' ];
+
+        let htmlIcons = '<div class="avatar-container">';
+
+        for( let i = 0; i < selections.length; i++ ){
+
+            const { id } = selections[i];
+
+            const { precioUnitario, cantidad, proveedor, utilidad, proveedorName, costoUnitario, descripcion } = productos[ id ];
+
+            selections[i].cantidad = cantidad;
+            selections[i].proveedor = proveedor;
+            selections[i].descripcion = descripcion;
+            selections[i].proveedorName = proveedorName;
+            selections[i].precioUnitario =  precioUnitario;
+            selections[i].utilidad = utilidad;
+            selections[i].costoUnitario = costoUnitario;
+            
+
+            if (i == selections.length - 1){ //agrega los productos a la tabla de fletes, si solo es 1, no le pone coma
+
+                fleteProducts += descripcion;
+
+            }else{
+
+                fleteProducts += descripcion + " | ";
+
+            }
+
+            const iniciales = getInitials( descripcion );
+
+            if( i < 4 ){
+
+                htmlIcons += `<div class="avatar avatar-xs avatar-rounded avatar-productos">
+                              <div class="avatar-title ${colors[i]}" data-bs-toggle="tooltip" data-bs-placement="top"  title="${descripcion}">${ iniciales }</div>
+                          </div>`;
+
+            }
+
+            $(".productSelectCot option[value='" + selections[i].id + "']").remove();
+
+        }
+
+        if( selections.length > 4 ){
+
+            htmlIcons += `<div class="avatar avatar-xs avatar-rounded avatar-productos">
+                              <div class="avatar-title">+5</div>
+                          </div>`;
+
+        }
+
+        htmlIcons += '</div>'
+
+        if( tipoGasto == 'flete' ){
+
+            const gastoHtml =
+                            `${formatterMoney( divisa, totalFlete )}
+                                <span class="material-icons info-gasto-flete">
+                                    info
+                                </span>`;
+
+
+
+            $('#fletesCot').DataTable().row.add({
+            
+                productos: htmlIcons,
+                lugarEntrega,
+                tiempoEntregaFromNum,
+                tiempoEntregaToNum,
+                "unidadTiempo": tiempoEntregaUni,
+                "productosData": selections,
+                fleteIntl,
+                fleteImpo,
+                fleteNtl,
+                totalFlete,
+                checkboxLugarEntrega,
+                tipo: tipoGasto,
+                gasto: gastoHtml,
+                uuidFlete,
+                descripcionGasto,
+                icons: '<i class="material-icons-outlined moreTable cursor-pointer editFlete">edit</i><i class="material-icons-outlined moreTable cursor-pointer deleteFlete" style="margin-left:15px;">delete</i>',
+                
+            }).draw();
+
+            let { fletes: fletesArray } = $('#card-container').data(); //agregar fletes a array
+
+            fletesArray.push({
+
+                lugarEntrega,
+                tiempoEntregaFromNum,
+                tiempoEntregaToNum,
+                fleteIntl,
+                fleteImpo,
+                fleteNtl,
+                totalFlete,
+                gasto: gasto,
+                tipoGasto,
+                uuidFlete,
+                "unidadTiempo": tiempoEntregaUni,
+                "productosData": selections,
+                descripcionGasto,
+                checkboxLugarEntrega,
+
+            });
+
+            $('#card-container').data({ fletes: fletesArray });
+
+            return fletesArray;
+
+        }else{
+
+            $('#fletesCot').DataTable().row.add({
+            
+                productos: htmlIcons,
+                "productosData": selections,
+                totalFlete: gasto,
+                tipo: tipoGasto,
+                gasto,
+                uuidFlete,
+                descripcionGasto,
+                icons: '<i class="material-icons-outlined moreTable cursor-pointer editFlete">edit</i><i class="material-icons-outlined moreTable cursor-pointer deleteFlete" style="margin-left:15px;">delete</i>',
+                
+            }).draw();
+
+            const { fletes: fletesArray } = $('#card-container').data(); //agregar fletes a array
+
+            fletesArray.push({
+
+                totalFlete: gasto,
+                gasto,
+                tipoGasto,
+                uuidFlete,
+                productosData: selections,
+                descripcionGasto,
+
+            });
+
+            $('#card-container').data({ fletes: fletesArray });
+
+            return fletesArray;
+
+        }
+
+    };
+
+    const hypenIfNull = ( value ) => {
+
+        return value ? value : '-' 
+
+    };
+
+    const calcularCotizacion = async (  ) => {
+
+        const { fletes, productos, uuidLugarDeEntrega } = $('#card-container').modal().data();
+        const arrayResumenProds = [];
+        const divisa = $('.divisaCot').val();
+        let subtotalCotizacion = 0;
+        let totalCotizacion = 0;
+        let ivaCotizacion = '-';
+
+        fletes.forEach( ( flete, indexFlete ) => {
+
+            const { productosData, totalFlete, subtotalFlete, fleteImpo, fleteIntl, fleteNtl } = flete;
+
+            productosData.forEach( ( producto, indexProducto ) => {
+                
+                const { id, text, costoUnitario, precioUnitario, utilidad, cantidad } = producto;
+
+                // const { unidadMedida } = productos.find( ({ uuid }) => uuid == id );
+
+                const cantidadParsed = parseFloat( cantidad );
+
+                const importeSinFlete = cantidadParsed * precioUnitario;
+
+                let porcentajeUnitario = ( importeSinFlete * 100 ) / subtotalFlete;
+
+                const porcentajeMultiplicacion = porcentajeUnitario / 100;
+
+                let valorFleteProducto = ( fleteImpo + fleteIntl + fleteNtl ) * porcentajeMultiplicacion;
+
+                const fletePorUnidad = valorFleteProducto/cantidadParsed;
+
+                const precioUnitarioTotal = fletePorUnidad + precioUnitario;
+
+                let precioUnitarioConFlete = precioUnitario + valorFleteProducto;
+
+                let importeTotalProducto = importeSinFlete + valorFleteProducto;
+
+                subtotalCotizacion += importeTotalProducto;
+
+                $('#card-container').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].importe = importeTotalProducto;
+                $('#card-container').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].costoUnitario = costoUnitario;
+
+                importeTotalProducto = formatterMoney( divisa, importeTotalProducto );
+                porcentajeUnitario = + parseFloat(porcentajeUnitario).toFixed(2);
+                precioUnitarioConFlete = + parseFloat(precioUnitarioConFlete).toFixed(2);
+                valorFleteProducto = + parseFloat(valorFleteProducto).toFixed(2);
+
+                $('#card-container').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].porcentajeUnitario = porcentajeUnitario;
+                $('#card-container').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].precioUnitarioConFlete = precioUnitarioConFlete;
+                $('#card-container').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].precioUnitarioTotal = precioUnitarioTotal.toFixed(2);
+                $('#card-container').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].valorFleteProducto = valorFleteProducto;
+
+            });
+
+        });
+
+        totalCotizacion = subtotalCotizacion;
+
+        const interiorDeLaRepublica = await asyncPostAjax( '/getLocationEntrega', { uuidLugarDeEntrega } );
+
+        console.log({ interiorDeLaRepublica })
+
+        if ($(".divisaCot").val() == "MXN" || interiorDeLaRepublica ) {
+
+            ivaCotizacion = subtotalCotizacion * 0.16;
+
+            console.log({ivaCotizacion})
+
+            totalCotizacion += ivaCotizacion;
+
+        }
+
+        $('#card-container').modal().data().cotizacion.total = totalCotizacion;
+        $('#card-container').modal().data().cotizacion.subtotal = subtotalCotizacion;
+        $('#card-container').modal().data().cotizacion.iva = ivaCotizacion;
+        $('#card-container').modal().data().cotizacion.divisa = divisa;
+        $('#card-container').modal().data().cotizacion.vigencia = $('#vigenciaDays').val();
+
+    };
+
+    const clearAddFleteInputs = (  ) => {
+
+        const { lugarDeEntrega } = $('#card-container').data();
+
+        $(".fleteInfoEntrega").val( lugarDeEntrega );
+        $(".fleteInfoEntrega").prop( 'disabled', true );
+
+        $('.fleteTiempoFromEntrega').val('');
+        $('.fleteTiempoToEntrega').val('');
+        $('.productSelectCot').val('');
+        $('.productSelectCot').trigger('change');
+
+        $('.fleteNtl').val('$ 0.00');
+        $('.fleteNtl').inputmask();
+
+        $('.fleteImpo').val('$ 0.00');
+        $('.fleteImpo').inputmask();
+
+        $('.fleteIntl').val('$ 0.00');
+        $('.fleteIntl').inputmask();
+
+        $('#checkbox-lugar-entrega-diferente').prop( 'checked', false );
+
+        $('#fleteCollapse').collapse('hide');
+
+        $('#createFlete').removeClass( 'hide' );
+
+        $('#agregar-flete-modal').modal('hide');
+
+    };
+
+    async function formatProductConfirm( data ) {
+
+        const { uuid, } = data;
+        const uuidVenta = getParam('uuid');
+
+        const prodData = await asyncPostAjax( '/getProductData', { uuidProducto: uuid, uuidVenta, optionNumber } );
+
+        console.log({ prodData })
+
+        const { proveedor, costoUnitario, utilidad, utilidadCantidad, referencia, descripcion, valorFleteProrrateadoUnitario, valorGastoUnitario, porcentajeProrrateo } = prodData;
+
+        var producDet = getFile(`../public/assets/templates/rowCollapseSolCon.html`);
+
+        const divisa = $('.divisaCot').val();
+
+        
+
+
+        producDet = producDet.replace("$DESCRIPCIONCLIENTE$",data.descripcionCliente)
+                    .replace( "$PROVEEDOR$", !proveedor ? '-' : proveedor )
+                    .replace( "$COSTOUNITARIO$", formatterMoney( divisa, !costoUnitario ? '-' : costoUnitario ) )
+                    .replace( "$UTILIDAD$", !utilidad ? '-' : utilidad  )
+                    .replace( "$REFERENCIA$", !referencia ? '-' : referencia )
+                    .replace( "$CALCULOENDINERO$", `<span id="utilidad-row-det">${formatterMoney( divisa, !utilidadCantidad ? '-' : utilidadCantidad )}</span>`)
+                    .replace( "$DESCRIPCIONINTERNA$", descripcion )
+                    .replace( "$PORCENTAJEPRO$", `${ !porcentajeProrrateo ? '-' : porcentajeProrrateo }%` )
+                    .replace( "$FLETEPRO$", formatterMoney( divisa, !valorFleteProrrateadoUnitario ? '-' : valorFleteProrrateadoUnitario ) )
+                    .replace( "$OTROSGASTOS$", formatterMoney( divisa, !valorGastoUnitario ? '-' : !valorGastoUnitario ? '-' : valorGastoUnitario ) )
+                    
+        
+        /*SUSTITUIR TODOS LOS CAMPOS EXTRA CON LA DATA*/
+        /*PONER IMAGEN COMO SLIDER PARA PODER ABRIRLA EN PANTALLA COMPLETA*/
+
+        
+        
+        return producDet;
+
+    }
+
+
+
+
+
+</script>
+
+<!-- <div id="imageCarousel" class="carousel slide" data-ride="carousel">
+        <div class="carousel-inner">
+            <div class="carousel-item active">
+            <img class="d-block w-100" src="../../public/assets/images/sumestra/sumestra-noimg.jpeg" alt="First slide">
+            </div>
+        </div>
+    </div> -->

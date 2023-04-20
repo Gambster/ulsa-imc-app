@@ -1,0 +1,501 @@
+<script>
+
+    $('#nuevo-comprador-form').submit(async function( e ){
+
+        const buttonDom = new loadingButton($("#nuevo-comprador .SaveButton"),"...Guardando")
+        buttonDom.start();
+        e.preventDefault();
+
+        const serializedData = $(this).serializeArray();
+
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        formObj['uuidEmpresa'] = urlParams.get('uuid');
+
+        const {Response} = await  asyncPostAjax('/registrarComprador',formObj)
+        console.log(Response)
+
+        showNotification(Response.Type,Response.Message)
+
+        if(Response.Type == "success"){
+            clearModalAndClose( '#nuevo-comprador', '#nuevo-comprador-form' );
+            location.reload()
+        }
+        buttonDom.stop();
+
+
+    });
+
+
+    $('#nuevo-usuario-form').submit( function( e ){
+
+        e.preventDefault();
+
+        const serializedData = $(this).serializeArray();
+
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        formObj['uuidEmpresa'] = urlParams.get('uuid');
+
+        postAjax( '/registrarUsuario', formObj, () => { 
+
+            clearModalAndClose( '#nuevo-usuario', '#nuevo-usuario-form' );
+            location.reload()
+
+        });
+
+    });
+
+
+    $('#nueva-division-form').submit( function( e ){
+
+        e.preventDefault();
+
+        const serializedData = $(this).serializeArray();
+
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        formObj['uuidEmpresa'] = urlParams.get('uuid');
+
+        postAjax( '/registrarDivision', formObj, () => { 
+
+            clearModalAndClose( '#nueva-division', '#nueva-division-form' );
+            location.reload()
+        });
+
+    });
+
+    $("#editar-division-form").submit(async function(e){
+        e.preventDefault()
+
+        const buttonDom = $("#editar-division .submit")
+        const SaveButton = new loadingButton(buttonDom,"...Actualizando")
+        SaveButton.start();
+
+
+        const serializedData = $(this).serializeArray();
+        
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        console.log(urlParams.get('uuid'));
+
+        formObj['uuidEmpresa'] = urlParams.get('uuid');
+        formObj['uid_division'] = $("#editar-division").modal().data("id")
+        console.log(formObj)
+
+        const {Response} = await asyncPostAjax("/empresas/editdivision",formObj);
+        SaveButton.stop()
+        showNotification(Response.Type,Response.Message)
+        location.reload()
+    })
+
+
+    $('#editar-empresa-form').submit(async function( e ){
+
+        e.preventDefault();
+        
+        const dataSerialized = $( this ).serializeArray();
+        const objEmpresa = {};
+
+        for( const val of dataSerialized ){
+
+            const { name, value } = val;
+            objEmpresa[ name ] = value;
+
+        }
+
+        
+        const LugarEntregaSelect2 = $('#lugar-de-entrega').select2('data')[0];
+        const lugarDeEntregaName = LugarEntregaSelect2 != undefined ? LugarEntregaSelect2.text : "";
+
+        const pais = getSelect2Values("#selectPaises");
+        if(pais != undefined){
+            objEmpresa['paisName'] = pais.text
+        }
+        const estado = getSelect2Values("#selectEstados")
+        if(estado != undefined){
+            objEmpresa['estadoName'] = estado.text
+        }
+        const urlParams = new URLSearchParams(window.location.search);
+
+        objEmpresa['lugarDeEntregaName'] = lugarDeEntregaName;
+        objEmpresa['uid'] =  urlParams.get('uuid');
+
+        console.log(objEmpresa)
+
+        const result = await asyncPostAjax('/empresas/update',objEmpresa)
+        const res = result.Response
+        showNotification(res.Type,res.Message)
+        if(res.Type == "success"){
+            location.reload()
+
+        }
+
+
+    });
+
+
+    $("#deleteEmpresa .confirmDelete").click(async function(){
+        const buttonDom = $("#deleteEmpresa .confirmDelete")
+        console.log(buttonDom)
+        const deleteButton = new loadingButton(buttonDom,"...Cargando")
+        deleteButton.start();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const objEmpresa = {};
+        objEmpresa['uid'] =  urlParams.get('uuid');
+
+        const result = await asyncPostAjax("/empresas/delete",objEmpresa);
+        const res = result.Response;
+        if(res.Type == "success"){
+            window.location.href = "/empresas"
+
+        }
+        console.log(result)
+        showNotification(res.Type,res.Message)
+        deleteButton.stop();
+
+
+        
+    });
+
+    $("#editar-comprador-form").submit(async function(e){
+        e.preventDefault()
+
+        const buttonDom = $("#editar-comprador .submit")
+        const SaveButton = new loadingButton(buttonDom,"...Actualizando")
+        SaveButton.start();
+
+
+        const serializedData = $(this).serializeArray();
+        
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        formObj['uuidEmpresa'] = urlParams.get('uuid');
+        formObj['uid_comprador'] = $("#editar-comprador").modal().data("id")
+
+
+        const {Response} = await asyncPostAjax("/empresas/editcomprador",formObj);
+        SaveButton.stop()
+        showNotification(Response.Type,Response.Message)
+    })
+
+    $("#editar-usuario-form").submit(async function(e){
+        e.preventDefault()
+
+        const buttonDom = $("#editar-usuario .submit")
+        const SaveButton = new loadingButton(buttonDom,"...Actualizando")
+        SaveButton.start();
+
+
+        const serializedData = $(this).serializeArray();
+        
+        const formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        console.log(urlParams.get('uuid'));
+
+        formObj['uuidEmpresa'] = urlParams.get('uuid');
+        formObj['uid_usuario'] = $("#editar-usuario").modal().data("id")
+        console.log(formObj)
+
+        const {Response} = await asyncPostAjax("/empresas/editusuario",formObj);
+        SaveButton.stop()
+        showNotification(Response.Type,Response.Message)
+        location.reload()
+    })
+
+
+    $("#deleteComprador .confirmDelete").click( async function(){
+
+        const buttonDom = $("#deleteComprador .confirmDelete")
+        const deleteButton = new loadingButton(buttonDom,"...Eliminando")
+        deleteButton.start();
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const uidEmpresa = urlParams.get('uuid');
+
+        const uid = $("#deleteComprador").modal().data("id")
+        const {Response} = await asyncPostAjax("/empresas/deletecomprador", {uid,uidEmpresa})
+        showNotification(Response.Type,Response.Message)
+
+        if(Response.Type == "success"){
+            location.reload();
+
+        }
+        deleteButton.stop()
+
+    });
+
+
+    $("#deleteUsuarios .confirmDelete").click( async function(){
+
+        const buttonDom = $("#deleteUsuarios .confirmDelete")
+        const deleteButton = new loadingButton(buttonDom,"...Eliminando")
+        deleteButton.start();
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const uidEmpresa = urlParams.get('uuid');
+
+        const uid = $("#deleteUsuarios").modal().data("id")
+        const {Response} = await asyncPostAjax("/empresas/deleteusuario", {uid,uidEmpresa})
+        showNotification(Response.Type,Response.Message)
+
+        if(Response.Type == "success"){
+            location.reload();
+
+        }
+        deleteButton.stop()
+
+    });
+
+    $("#deleteDivision .confirmDelete").click( async function(){
+
+        const buttonDom = $("#deleteDivision .confirmDelete")
+        const deleteButton = new loadingButton(buttonDom,"...Eliminando")
+        deleteButton.start();
+
+        const urlParams = new URLSearchParams(window.location.search);
+
+        const uidEmpresa = urlParams.get('uuid');
+
+        const uid = $("#deleteDivision").modal().data("id")
+        const {Response} = await asyncPostAjax("/empresas/deletedivision", {uid,uidEmpresa})
+        showNotification(Response.Type,Response.Message)
+
+        if(Response.Type == "success"){
+            location.reload();
+
+        }
+        deleteButton.stop()
+
+    });
+
+    $(document).ready(function(){
+        $('#table-compradores').on('click', '.tableButtons i', function (e) {
+            const table = $(e.delegateTarget).DataTable()
+            const Row = table.row( $(this).closest( "tr" ) );
+            if($(this).text() == "edit"){
+                const {id,nombre,telefono,email} = Row.data()
+                
+                $("#nombre-comprador-edit").val(nombre)
+                $("#email-comprador-edit").val(email)
+                $("#telefono-comprador-edit").val(telefono)
+
+
+                $("#editar-comprador").modal("show").data({id})
+
+            }else if($(this).text() == "delete"){
+                const {id} = Row.data()
+
+                $("#deleteComprador").modal("show").data({id});
+
+                console.log("eliminar")
+            }
+
+      
+        })
+
+        $('#table-usuarios').on('click', '.tableButtons i', function (e) {
+            const table = $(e.delegateTarget).DataTable()
+            const Row = table.row( $(this).closest( "tr" ) );
+            if($(this).text() == "edit"){
+                const {id,nombre,telefono,email} = Row.data()
+                
+                $("#nombre-usuario-edit").val(nombre)
+                $("#email-usuario-edit").val(email)
+                $("#telefono-usuario-edit").val(telefono)
+
+
+                $("#editar-usuario").modal("show").data({id})
+
+            }else if($(this).text() == "delete"){
+                const {id} = Row.data()
+
+                $("#deleteUsuarios").modal("show").data({id});
+
+            }
+
+      
+        })
+
+        $('#table-divisiones').on('click', '.tableButtons i', function (e) {
+            const table = $(e.delegateTarget).DataTable()
+            const Row = table.row( $(this).closest( "tr" ) );
+            if($(this).text() == "edit"){
+                const {uuid,nombre,domicilio} = Row.data()
+                console.log(Row.data())
+                
+                $("#nombre-division-edit").val(nombre)
+                $("#domicilio-division-edit").val(domicilio)
+
+                $("#editar-division").modal("show").data({id:uuid})
+
+            }else if($(this).text() == "delete"){
+                const {uuid} = Row.data()
+
+                $("#deleteDivision").modal("show").data({id:uuid});
+
+            }
+
+      
+        })
+
+       //Si hay un parametro hash , intenta acceder al tab con ese atributo
+        const hashParam = getHash()
+        if(hashParam){
+            activeTab(hashParam)
+        }else{
+            history.pushState("", document.title, window.location.pathname + window.location.search);
+
+        }
+        
+    });
+
+
+    //Cambia el parametro hash cuando se selecciona uno de los botones de el tab
+    $("#myTab").on("click",".nav-link",function(){
+        const hash = $(this).attr("data-bs-target") ?? ""
+        history.pushState("", document.title, window.location.pathname + window.location.search + hash);
+    })
+
+    // $("#constancia-form").submit(function(e){
+    //     e.preventDefault();
+    //     const selectedFile = document.getElementById('constanciaFiscal').files[0];
+
+    //     asyncPostAjax("/hoola",selectedFile);
+    // })
+
+
+    /* const input = document.getElementById("selectAvatar");
+
+    const convertBase64 = (file) => {
+    return new Promise((resolve, reject) => {
+        const fileReader = new FileReader();
+        fileReader.readAsDataURL(file);
+
+        fileReader.onload = () => {
+        resolve(fileReader.result);
+        };
+
+        fileReader.onerror = (error) => {
+        reject(error);
+        };
+    });
+    };
+
+    const uploadImage = async (event) => {
+        const file = event.target.files[0];
+        const base64 = await convertBase64(file);
+        console.log(base64)
+    };
+
+   
+
+    $("#constanciaFiscal").on("change",(e) => {
+        uploadImage(e);
+
+    })
+ */
+
+ $("#constanciaFiscal").on('change',function(e){
+    var file = event.target.files[0];
+    const fileType = file.type;
+    if (fileType != "application/pdf"){
+        $(e.target).val("")
+        showNotification("Error",`Archivo seleccionado no es PDF`) 
+    };
+ })
+
+
+$("#constancia-form").submit(async function(e){
+    e.preventDefault();
+    const file =  $("#constanciaFiscal")[0].files[0];
+    if(file){
+        const buttonDom = e.originalEvent.submitter; //Botón que  detono el evento submit
+        const button = new loadingButton($(buttonDom),"Guardando");
+        button.start();
+        const Filename = file.name;
+        const urlParams = new URLSearchParams(window.location.search);
+        const uid =  urlParams.get('uuid');
+        
+        const base64 = await convertBase64(file);
+        const {Response} = await asyncPostAjax('/empresas/upload/constancia',{base64,Filename,uid})
+        showNotification(Response.Type,Response.Message);
+        if(Response.Type == "success"){
+            $("#pdfLink").text(Filename);
+            const date = Response.Data
+            $("#dateConstancia").text(date);
+            $("#actualizar-constancia").modal("hide");
+        }
+        button.stop();
+    }
+   
+
+});
+
+
+
+    
+</script>

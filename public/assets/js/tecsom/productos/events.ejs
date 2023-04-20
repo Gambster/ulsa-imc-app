@@ -1,0 +1,16 @@
+<script>
+
+    $( document ).on( 'click', '#productos-table > tbody > tr', function(){
+
+        const index = $(this).index();
+        const { uuid } = $('#productos-table').DataTable().row( index ).data();
+
+        const url = document.location.origin;
+
+        window.location.replace( `${ url }/productos/?uuid=${uuid}` );
+
+    });
+
+    
+
+</script>

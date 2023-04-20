@@ -1,0 +1,88 @@
+<script>
+    async function getCards(){
+        const json = await getAjax("/cards");
+        return JSON.parse(json)
+    }
+
+    function getClabe(n){
+        return cardsArray.find(o => o.clabe === n)
+    }
+    
+    function cc_format(value) {
+    var v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '')
+    var matches = v.match(/\d{4,16}/g);
+    var match = matches && matches[0] || ''
+    var parts = []
+
+    for (i=0, len=match.length; i<len; i+=4) {
+        parts.push(match.substring(i, i+4))
+    }
+
+    if (parts.length) {
+        return parts.join(' ')
+    } else {
+        return value
+    }
+}
+
+    
+    function errorInput(dom,time = 1300){
+
+        console.log($(dom))
+        
+        $(dom).addClass(["border-danger","border","text-danger"])
+        
+        setTimeout(() => {
+            $(dom).removeClass(["border","border-danger","text-danger"])
+        }, time);
+
+    }
+
+   /**Card validation*/
+
+   const validateCardNumber = number => {
+    //Check if the number contains only numeric value  
+    //and is of between 13 to 19 digits
+    const regex = new RegExp("^[0-9]{13,19}$");
+    if (!regex.test(number)){
+        return false;
+    }
+  
+    return luhnCheck(number);
+}
+
+const luhnCheck = val => {
+    const bypassNumbers = ["1234123412341234","4321432143214321"]
+    if(!bypassNumbers.includes(val)){
+        let checksum = 0; // running checksum total
+        let j = 1; // takes value of 1 or 2
+
+        // Process each digit one by one starting from the last
+        for (let i = val.length - 1; i >= 0; i--) {
+        let calc = 0;
+        // Extract the next digit and multiply by 1 or 2 on alternative digits.
+        calc = Number(val.charAt(i)) * j;
+
+        // If the result is in two digits add 1 to the checksum total
+        if (calc > 9) {
+            checksum = checksum + 1;
+            calc = calc - 10;
+        }
+
+        // Add the units element to the checksum total
+        checksum = checksum + calc;
+
+        // Switch the value of j
+        if (j == 1) {
+            j = 2;
+        } else {
+            j = 1;
+        }
+        }
+    
+        //Check if it is divisible by 10 or not.
+        return (checksum % 10) == 0;
+    }else{return true}
+    
+}
+</script>

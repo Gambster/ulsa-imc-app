@@ -1,0 +1,100 @@
+<script>
+
+const tresholdLoadMore = 5;
+
+async function load_More( tableElement, path, wrapperScroll , search = ""){
+    console.log('Hola lonches')
+
+    if(search.length < 3){
+
+        search = undefined;
+
+    }
+
+    console.log("entra funcion")
+    $(wrapperScroll).unbind();
+    const formData = {  };
+    formData["search"] = search;
+
+    const lastElementData = tableElement.row(':last').data();
+
+    /* console.log(lastElementData) */
+
+    const ajaxPath = path;
+
+    if( !lastElementData ){
+
+        console.log('gansito')
+        $('#table-usuarios_wrapper .bottom').addClass('hide');
+
+        formData.init = true;
+
+    }
+    else{
+
+        formData.init = false;
+        formData.uuid = lastElementData.uuid;
+
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const uuidProduct = urlParams.get('uuid'); 
+
+    formData.uid = uuidProduct;
+
+    $( wrapperScroll ).find('.bottom').removeClass('hide');
+
+
+    const result = await asyncPostAjax( ajaxPath,formData );
+    console.log({result})
+
+    const addVentas = result;
+
+
+/*     console.log( result.tableData )
+ */
+    tableElement.rows.add( result.tableData ).draw();
+
+    $( wrapperScroll ).find('.bottom').addClass('hide');
+
+    if( result.loadMore ){
+        console.log({wrapperScroll})
+        console.log(isOverflown(wrapperScroll))
+        if( !isOverflown( wrapperScroll ) ){
+
+            console.log('no overflown')
+            
+            
+            load_More( tableElement, ajaxPath, wrapperScroll );
+
+        }
+        else{
+            console.log('Si overflown')
+
+            $(wrapperScroll).on('scroll', async function() {
+
+                console.log(Lonchesiuuu)
+                
+                console.log($(this).scrollTop() + $(this).innerHeight())
+                console.log($(this)[0].scrollHeight - tresholdLoadMore)
+
+
+                if ($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight - tresholdLoadMore) {
+                    
+                    $('#table-usuarios_wrapper .bottom').addClass('hide');
+                    //$('#table-compradores_wrapper .bottom').removeClass('hide');
+                    await load_More( tableElement, ajaxPath, wrapperScroll );
+                    $('#table-compradores_wrapper .bottom').addClass('hide');
+                    console.log('Hola')
+
+                }
+
+            });
+
+        }
+
+    }
+
+}
+
+
+</script>

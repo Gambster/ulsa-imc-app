@@ -1,0 +1,474 @@
+<script>
+
+    async function load_More( filtro, tableElement, path, wrapperScroll ){
+
+        $(wrapperScroll).unbind();
+        $('.badge-multiple').unbind();
+
+        const lastElementData = tableElement.row(':last').data();
+
+        const ajaxPath = path;
+        const formData = {
+
+            filtro,
+
+        };
+        
+        if( !lastElementData ){
+        
+            formData.init = true;
+        
+        }
+        else{
+
+            formData.init = false;
+            formData.UUID = lastElementData.UUID;
+
+        }
+
+        const result = await asyncPostAjax( ajaxPath,formData );
+
+        console.log(result);
+        const addVentas = result;
+        
+        await getNameFromUuid( '#table-solicitud', 'empresasInfo', result, 'empresa', wrapperScroll, '/getEmpresasName', tableElement, filtro, ajaxPath );
+        await getNameFromUuid( '#table-solicitud', 'compradoresInfo', result, 'cliente', wrapperScroll, '/getCompradorName', tableElement, filtro, ajaxPath );
+        await getNameFromUuid( '#table-solicitud', 'usuariosInfo', result, 'usuario', wrapperScroll, '/getUsuarioName', tableElement, filtro, ajaxPath );
+
+        result.tableData.forEach(function(element, i) {
+
+            let postDataKey = '';
+            let tableDataKey = '';
+            let badge = '';
+            // data-bs-content="${nombreUsuario}-Usuario <strong>fortinaiti</strong> ${nombreCliente}-Cliente"
+
+            console.log({ element })
+
+            const { cliente, usuario } = element;
+
+            if( cliente && usuario ){
+
+                badge = `<a  data-html="true" class="badge badge-info badge-multiple" tabindex="0" role="button" data-bs-toggle="popover" data-bs-trigger="hover" title=""  >Múltiple</a>`;
+
+            }
+            else if( usuario ){
+
+                postDataKey = 'usuarios';
+                tableDataKey = 'usuario';
+                badge = `<span class="badge badge-info badge-compradores">Usuario</span>`
+                
+            }else if( cliente ){
+
+                postDataKey = 'compradores';
+                tableDataKey = 'cliente';
+                badge = `<span class="badge badge-info badge-compradores">Comprador</span>`
+
+            }
+
+            const namesData = ( $('#table-solicitud').data()[`${postDataKey}Info`] || [] ).find( elm  => elm.uuid == element[ tableDataKey ]);
+
+            if( namesData ){
+
+                result.tableData[i][`clienteNombre`] = namesData.nombre + badge;
+
+            }else{
+
+                result.tableData[i][`clienteNombre`] = badge;
+
+            }
+
+        });
+
+        tableElement.rows.add( result.tableData ).draw();
+
+        $('.badge-multiple').popover({
+            html : true, 
+            content: function() {
+                const { clienteTable, usuarioTable } = $('#table-solicitud').DataTable().row($( this ).parent().parent()).data();
+
+                return `<span><b>Usuario</b>: ${usuarioTable}</span> </br>
+                        <span><b>Cliente</b>: ${clienteTable}</span>`;
+            } 
+        }); 
+
+        $('.badge-multiple').popover({ trigger: "hover" });
+
+        if( result.loadMore ){
+    
+            if( !isOverflown( wrapperScroll ) ){
+
+                console.log('no overflown')
+                
+                load_More( filtro, tableElement, ajaxPath, wrapperScroll );
+
+            }
+            else{
+
+                $(wrapperScroll).on('scroll', async function() {
+
+                    if ($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight - tresholdLoadMore) {
+                        
+                        $('#table-solicitud_wrapper > .bottom').removeClass('hide');
+                        await load_More( filtro, tableElement, ajaxPath, wrapperScroll );
+                        $('#table-solicitud_wrapper > .bottom').addClass('hide');
+
+                    }
+
+                });
+
+            }
+
+        }
+
+    }
+
+    const checkParams = (  ) => {
+
+        const uuidVenta = getParam( 'uuid' );
+
+        if( !uuidVenta ) return;
+
+        verSolicitudFunction(  uuidVenta, true );
+
+    };
+
+    const loadEmpresas = async (  ) => {
+
+        loadDataToSelect( '/getEmpresas', {}, '#solicitudCliente' );
+
+    };
+
+    const createImagesHtmlObject = ( uuidsImg, uuidProducto ) => {
+
+        let htmlImg = !uuidsImg ? 'No image data' : '';
+
+        ( uuidsImg || [] ).forEach( ( { uuidImage }, index ) => {
+
+            const imgHref = "../images/" + uuidProducto + '/' + uuidImage + ".png";
+
+            if ( ( index + 1 ) == 1 && uuidsImg.length > 1) {
+
+                htmlImg += "<a data-fslightbox='" + uuidProducto + "' href='" + imgHref + "'><div style='width: 80px; text-align:center;'><span class='productCounter'>+ " + (uuidsImg.length - 1).toString() + "</span><img style='width:100%;' src='" + imgHref + "'/></div></a>";
+
+            } else if ( ( index + 1 ) == 1 && uuidsImgs.length == 1) {
+
+                htmlImg += "<a data-fslightbox='" + uuidProducto + "' href='" + imgHref + "'><div style='width: 80px; text-align:center;'><img style='width:100%;' src='" + imgHref + "'/></div></a>";
+
+            } else {
+
+                htmlImg += "<a data-fslightbox='" + uuidProducto + "' href='" + imgHref + "'></a>";
+
+            }
+
+        });
+
+        return htmlImg;
+
+    };
+
+    const verSolicitudFunction = async ( uuidVenta, open ) => {
+
+        if( !uuidVenta ) return;
+
+        $('#ver-solicitud').modal('show');
+
+        if( open ){
+
+            $('#ver-solicitud').modal('show');
+
+        } 
+
+        const { ventaData, productos } = await asyncPostAjax( '/getVenta', { uuidVenta } );
+        const {  cliente, empresa, fechasolicitud, numeroDeSolicitud } = ventaData;
+
+        const productosObjArray = [];
+
+        for( const producto of productos ){
+
+            const { Descripcion, Observaciones, unidadMedida, Cantidad, informacionAdicional, numeroSolicitud, uuidProducto } = producto;
+
+            const uuidsImg = await asyncPostAjax( '/getProductImages', { uuidProducto } );
+
+            const img = createImagesHtmlObject( uuidsImg, uuidProducto );
+
+            productosObjArray.push({
+
+                img,
+                Descripcion,
+                unidadMedida,
+                Cantidad,
+                informacionAdicional: !informacionAdicional  ? '-' : informacionAdicional,
+                Observaciones: !Observaciones ? '-' : Observaciones,
+                numeroSolicitud: numeroDeSolicitud,
+
+            });
+
+        }
+
+        $('#table-productos-ver').DataTable().rows.add( productosObjArray ).draw();
+        refreshFsLightbox();
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que obtiene la imagen del servidor y la convierte a Base64.                                                                                          *                                                         
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    const getBase64Image = ( imgUrl ) => {
+
+        return new Promise(
+            function(resolve, reject) {
+                var img = new Image();
+                img.src = imgUrl;
+                img.setAttribute('crossOrigin', 'anonymous');
+                img.onload = function() {
+                    var canvas = document.createElement("canvas");
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    var ctx = canvas.getContext("2d");
+                    ctx.drawImage(img, 0, 0);
+                    var dataURL = canvas.toDataURL("image/png");
+                    resolve(dataURL.replace(/^data:image\/(png|jpg);base64,/, ""));
+                }
+                img.onerror = function() {
+                    reject("The image could not be loaded.");
+                }
+        });
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que convierte un timestamp en milisegundos a un DateTime en formato dd/mm/yyyy.                                                                      *                                                         
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    const timeConverter = ( UNIX_timestamp ) => {
+
+        var a = new Date(UNIX_timestamp );
+        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        var year = a.getFullYear();
+        var month = months[a.getMonth()];
+        var date = a.getDate();
+        var hour = a.getHours();
+        var min = a.getMinutes();
+        var sec = a.getSeconds();
+        var time = date + '/' + month + '/' + year  ;
+        return time;
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que crea un blob a partir de un string en Base64.                                                                                                    *                                                         
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    const base64toBlob = ( b64Data, contentType, sliceSize ) => {
+        
+        contentType = contentType || '';
+        sliceSize = sliceSize || 512;
+        var byteCharacters = atob(b64Data);
+        var byteArrays = [];
+        for (var offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+            var slice = byteCharacters.slice(offset, offset + sliceSize);
+            var byteNumbers = new Array(slice.length);
+            for (var i = 0; i < slice.length; i++) {
+                byteNumbers[i] = slice.charCodeAt(i);
+            }
+            var byteArray = new Uint8Array(byteNumbers);
+            byteArrays.push(byteArray);
+        }
+        var blob = new Blob(byteArrays, {
+            type: contentType
+        });
+        return blob;
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que inicializa un DateTimePicker.                                                                                                                    *
+     *   @func Recibe el id del elemento y lo inicializa agregando las configuraciones necesarias. A su vez, setea que cada vez que se aplique un cambio en el filtro de    *
+     *         la fecha, se mande a llama la función -applyDate-.                                                                                                           *
+     *   @params idElement: id del DateTimePicker a inicializar.                                                                                                            *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    const initDateTimePicker = ( idElement ) => {
+
+        $(`#${idElement}`).daterangepicker({
+            opens: 'left',
+            startDate: moment().subtract(30, 'days'),
+            endDate: moment(),
+            ranges: {
+                'Hoy': [moment(), moment()],
+                'Ayer': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                'Últimos 7 días': [moment().subtract(6, 'days'), moment()],
+                'Últimos 30 días': [moment().subtract(29, 'days'), moment()],
+                'Este mes': [moment().startOf('month'), moment().endOf('month')],
+                'Último mes': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+            },
+            "locale": {
+                "format": "MM/DD/YYYY",
+                "separator": " - ",
+                "applyLabel": "Aplicar",
+                "cancelLabel": "Cancelar",
+                "fromLabel": "De",
+                "toLabel": "A",
+                "customRangeLabel": "Personalizado",
+                "daysOfWeek": [
+                    "D",
+                    "L",
+                    "M",
+                    "M",
+                    "J",
+                    "V",
+                    "S"
+                ],
+                "monthNames": [
+                    "Enero",
+                    "Febrero",
+                    "Marzo",
+                    "Abril",
+                    "Mayo",
+                    "Junio",
+                    "Julio",
+                    "Agosto",
+                    "Septiembre",
+                    "OCtubre",
+                    "Noviembre",
+                    "Diciembre"
+                ],
+                "firstDay": 1
+            }
+        },  (  ) => idElement === 'datefilterto' ? actualizarTablaSolicitudes() : null );
+
+    };
+
+    const limpiarCamposNewProdSoli = (  ) => {
+
+        $("#SolicitudProdZone").collapse("hide");
+
+        $('#button-collapse-new-product').removeClass('hide');
+        $("#checkboxTag").addClass("hide");
+
+        $("#solicitudDescripcion").prop("disabled", false);
+        $("#solicitudMedida").prop("disabled", false);
+        $("#solicitudInfoAdicional").prop("disabled", false);
+        $("#solicitudComentarios").prop("disabled", false);
+
+        $('#checkboxTagInput').prop('checked', false);
+        $("#textboxFantasmaUuidProducto").val('');
+        $('#nombreOriginalProducto').addClass('hide');
+
+        $('#solicitudDescripcion').val('');
+        $('#solicitudMedida').val('');
+        $('#solicitudCantidad').val('');
+        $('#solicitudInfoAdicional').val('');
+        $('#solicitudComentarios').val('');
+        $('#busquedaProductoAvanzadaInput').val('');
+
+        $('#img-container-carousel').empty();
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que verifica que los campos requeridos en el container seleccionado estés completos.                                                                 *
+     *   @func Obtiene todos los inputs que seas requeridos en un container, los itera y checa que no estén vacios, en caso de estarlos agrega la clase error-on-input y    *
+     *         retorna un False.                                                                                                                                            *
+     *   @params idContainer: ID del div o contenedor donde se buscarán los inputs.                                                                                         * 
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    const validateFields = ( idContainer ) => {
+
+        let pass = true;
+
+        $( idContainer ).find('input.required-field' ).each( ( i, elm ) => {
+
+            if( !$( elm ).val() ){
+
+                $( elm ).addClass('error-on-input');
+                pass = false;
+
+            }
+
+        });
+
+        if( pass ){
+
+            return true;
+
+        }else{
+
+            return false;
+
+        }
+
+    };
+
+    const cleanModalNuevaSolicitud = (  ) => {
+
+        limpiarCamposNewProdSoli();    
+        
+        $("#solicitudCliente").val('').change();
+        $("#select-comprador").val('').change();
+        
+        $('#solicitudCheckFields').val('');
+        
+        $("#solicitudFolio").tagsinput('removeAll');
+        $("#solicitudFecha").flatpickr().clear();
+
+        $('#SolicitudSiguienteBtn').removeClass('hide');
+        $('#collapseFinSol').collapse('hide');  
+
+        $('#tableSolicitudProductos').DataTable().clear().draw();
+
+        $('#nuevaSolicitud').modal('hide');
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que agrega opciones al select que le especifiques                                                                                                    *
+     *   @func Hace un get request donde se espera obtener un objeto[key] = value, una vez teniendo la respuesta, se mete a un foreach donde va haciendo append uno por uno *
+     *         de las opciones al select.                                                                                                                                   *
+     *   @params idSelect: ID del select al que se desea agregar las opciones; url: url del endpoint donde se hará el request; json ( opcional ): Objeto que se manda en    * 
+     *                     el request por si es necesario.                                                                                                                  *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    const addOptionsToSelect = ( idSelect, url, json = {} ) => {
+
+        $( idSelect ).html('');
+
+        postAjax( url, json, ( res ) => {
+
+            const { objSelect } = res;
+
+            if( objSelect === undefined ) return;
+
+            Object.entries( objSelect ).forEach( ([ uuidData, valueData ]) => { 
+
+                const option = new Option( valueData, uuidData);
+                option.selected = true;
+
+                $( idSelect ).append(option);
+
+            });
+
+            $( idSelect ).val('').change();
+
+        });
+
+    };
+
+    /************************************************************************************************************************************************************************
+     *                                                                                                                                                                      *
+     *   @desc Función que regresa el número más pequeño de un Array                                                                                                        *
+     *   @func Recibe el un array de números y te regresa el más pequeño de ellos                                                                                           *
+     *                                                                                                                                                                      *
+     ************************************************************************************************************************************************************************/
+    Array.prototype.min = function() {
+        return Math.min.apply(null, this);
+    };
+
+</script>

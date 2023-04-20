@@ -1,0 +1,106 @@
+<div class="row">
+    <div class="col-md-12">
+        <div class="d-flex gap-4">
+            <div class="carousel slide cotizacionCarousel" data-ride="carousel">
+                <div class="carousel-inner visually-hidden cotizacionCarousel">
+                    <!-- <a class="carousel-item">
+                        <img class="d-block w-100" src="../../public/assets/images/sumestra/sumestra-noimg.jpeg" alt="First slide">
+                    </a> -->
+                    $CAROUSEL$
+
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-5">
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Descripción de cliente:</label>
+                                <p class="mb-0" >$DESCRIPCIONCLIENTE$</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Descripción interna:</label>
+                                <p class="mb-0" >$DESCRIPCIONINTERNA$</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Referencia:</label>
+                                <p class="mb-0">$REFERENCIA$</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="col-md-4">
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Proveedor:</label>
+                                <p class="mb-0">$PROVEEDOR$</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Costo unitario:</label>
+                                <p class="mb-0" id="costo-unitario-row-det">$COSTOUNITARIO$</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Utilidad:</label>
+                                <p class="mb-0">$UTILIDAD$ % ($CALCULOENDINERO$)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <div class="col-md-3">
+                    <div class="row g-2">
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">% Prorrateo:</label>
+                                <p class="mb-0">$PORCENTAJEPRO$</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Flete prorrateado:</label>
+                                <p class="mb-0" id="valor-flete-row-det">$FLETEPRO$</p>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="d-flex gap-2">
+                                <label class="form-label mb-0">Otros gastos:</label>
+                                <p class="mb-0" id="otros-gastos-row-det">$OTROSGASTOS$</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div> 
+        </div>
+    </div>
+</div>
+
+<style>
+
+    .cotizacionCarousel{
+        width: 100px;
+        height: 100px;
+    }
+
+    .cotizacionCarousel img{
+        width: 100%;
+        object-fit: cover;
+    }
+
+    .carouselImgContainer{
+        background-color: lightgray;
+        border-radius: 12px;
+        overflow: hidden;
+
+    }
+
+</style>

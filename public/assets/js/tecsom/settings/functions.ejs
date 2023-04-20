@@ -1,0 +1,168 @@
+<script>
+
+
+
+   /* function saveSMTP(){
+        
+        var host = $("#smtpHost").val();
+        var port = $("#smtpPort").val();
+        var passw = $("#smtpPass").val();
+        var emailsign = $('#summernote').summernote('code');
+        var smtpInfo = new Object();
+            smtpInfo.host = host;
+            smtpInfo.port = port;
+            smtpInfo.passw = passw;
+            smtpInfo.emailsign = emailsign;
+        var smptpJson = JSON.stringify(smtpInfo);
+    
+        $.ajax({
+            type: 'POST',
+            url: "/smtp-update",
+            data: smptpJson,
+            headers: {
+                Accept: "application/json",
+                "Content-Type": "application/json",
+                "CSRF-Token": Cookies.get("XSRF-TOKEN"),
+            },
+            success: function(result){
+                console.log(result);
+                if(result == "OK"){
+                    $("#CollapseMsg").css("color","#4bad48");
+                    $("#CollapseMsg").text("SMTP guardado con éxito");
+                    if(!$("#testMailBtn").length){
+                        $("#testmailcontainer").append('<button type="button"  id="testMailBtn" class="btn btn-primary dataBtnAdd" data-bs-toggle="modal" data-bs-target="#testMailPopup">Enviar correo de prueba</button>');
+                    }                
+                }
+                else{
+                    $("#CollapseMsg").css("color","#ff4857");
+                    $("#CollapseMsg").text("ocurrió un error, intentelo más tarde");
+                }
+                $("#Collapse").collapse("show");
+                setTimeout(() => {
+                    $("#Collapse").collapse("hide");
+                }, 3000);
+
+            }
+        });
+
+
+    }*/
+
+    function validateInputs(){
+        var emptytx = "";
+        var counter = 0;
+        $(".smtpInput").each(function(){
+            if($(this).val() != ""){
+            }else{
+                emptytx += '"'+$(this).attr("name") +'" ';   
+                counter += 1;         
+            }
+        });
+        if (emptytx != ""){
+            const Message1 = counter == 1 ? "El campo" : "Los campos";
+            const Message2 = counter == 1 ? "no se puede guardar vacio." : "no pueden guardar vacíos";
+            showNotification("Error",`${Message1} ${emptytx} ${Message2}`)
+            return false    
+        }
+        else{
+            //console.log("validar datos ingresados");
+            if($("#smtpPass").val().length <= 5){
+                showNotification("Error","La contraseña no puede contener menos de 6 caracteres")
+                return false
+            }
+            else{
+                return true
+            }
+        }
+    }
+
+    function setInputFilter(textbox, inputFilter) {
+    ["input", "keydown", "keyup", "mousedown", "mouseup", "select", "contextmenu", "drop"].forEach(function(event) {
+        textbox.addEventListener(event, function() {
+        if (inputFilter(this.value)) {
+            this.oldValue = this.value;
+            this.oldSelectionStart = this.selectionStart;
+            this.oldSelectionEnd = this.selectionEnd;
+        } else if (this.hasOwnProperty("oldValue")) {
+            this.value = this.oldValue;
+            this.setSelectionRange(this.oldSelectionStart, this.oldSelectionEnd);
+        } else {
+            this.value = "";
+        }
+        });
+    });
+    }
+
+    setInputFilter(document.getElementById("smtpPort"), function(value) {
+        return /^\d*\.?\d*$/.test(value); // Allow digits and '.' only, using a RegExp
+    });
+
+    function checkRegexHost(){
+        return /([A-Z]|[a-z])+([.])+([A-Z]|[a-z])+([.])+([A-Z]|[a-z])/.test($("#smtpHost").val());;
+    }
+
+
+    async function sendTestMail(email){
+
+        const button = new loadingButton($("#sendMailTest"),"...Enviando")
+        button.start();
+        const result = await asyncPostAjax("/testmail",{email});
+        const res = result.Response;
+        
+        showNotification( res.Type, res.Message );
+
+        button.stop();
+       
+    }
+
+    function formats(ele,e){
+        if(ele.value.length<19){
+            ele.value= ele.value.replace(/\W/gi, '').replace(/(.{4})/g, '$1 ');
+            return true;
+        }else{
+            return false;
+        }
+    }
+    
+    function numberValidation(e){
+        e.target.value = e.target.value.replace(/[^\d ]/g,'');
+        return false;
+    }
+
+    function addNewRow(uid, nombre, correo, numero){
+        var table = $('#datatable1').DataTable();
+        var fecha = getCurrentDate();
+        var Estado = '<span class="badge badge-success">Activo</span>';
+        var buttons = $(".viewTd:eq( 2 )").html();
+        $(table.row).addClass("pdpd");
+        table.row.add( [
+                uid,
+                nombre,
+                correo,
+                numero,
+                fecha,
+                Estado,
+                buttons,
+
+            ] ).draw( false );
+
+    }
+
+    function deleteRowWithUID(tabla, uid, name){
+
+        tabla.rows( function ( idx, data, node ) {
+            return data[name] === uid;
+        } ).remove().draw();    
+
+    }
+
+
+    function actualizarRow(tabla, uid, data){
+        tabla.row(uid).data( data ).draw();
+    }
+
+    function insertarRow(tabla, data){
+        tabla.row.add( data ).draw();
+    }
+
+</script>

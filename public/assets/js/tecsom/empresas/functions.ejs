@@ -1,0 +1,118 @@
+<script>
+
+    async function load_More( tableElement, path, wrapperScroll, search = "" ){
+
+        console.log('empieza')
+
+        if(search.length < 3){
+
+            search = undefined;
+
+        }
+
+        //
+
+        $(wrapperScroll).unbind();
+        const formData = {  };
+
+        formData["search"] = search;
+
+        const lastElementData = tableElement.row(':last').data();
+
+        const ajaxPath = path;
+
+        console.log({lastElementData})
+
+        if( !lastElementData ){
+
+            formData.init = true;
+
+        }
+        else{
+
+            formData.init = false;
+            formData.uuid = lastElementData.uuid;
+
+        }
+
+        
+        const result = await asyncPostAjax( ajaxPath,formData );
+
+        const addVentas = result;
+
+        console.log( result.tableData )
+
+        tableElement.rows.add( result.tableData ).draw();
+
+        //$( "#clienteSearch" ).prop( "disabled", false );
+
+        if( result.loadMore ){
+
+            if( !isOverflown( wrapperScroll ) ){
+
+                console.log('no overflown')
+                
+                load_More( tableElement, ajaxPath, wrapperScroll );
+
+            }
+            else{
+
+                $(wrapperScroll).on('scroll', async function() {
+
+                    if ($(this).scrollTop() + $(this).innerHeight() >= $(this)[0].scrollHeight - tresholdLoadMore) {
+                        
+                        $('#table-solicitud_wrapper > .bottom').removeClass('hide');
+                        await load_More( tableElement, ajaxPath, wrapperScroll );
+                        $('#table-solicitud_wrapper > .bottom').addClass('hide');
+                        $('#empresasTable_wrapper > .bottom').addClass('hide');
+                        $('#table-compradores_wrapper > .bottom').addClass('hide');
+                        $('#table-usuarios_wrapper > .bottom').addClass('hide');
+                        $('#table-divisiones_wrapper > .bottom').addClass('hide');
+                        $('#proveedores-table_wrapper > .bottom').addClass('hide');
+                    }
+
+                });
+
+            }
+
+        }
+
+        console.log('termina')
+
+    }
+
+async function searchAsync (word) {
+
+    //$( "#clienteSearch" ).prop( "disabled", true );
+    // $("#searchSpinner").show();
+
+    const searchWord = word.trim();
+
+    await load_More($("#empresasTable").DataTable(),"/loadTableEmpresas", $('#table-empresa-container')[0],searchWord);
+
+    $('#clienteSearch').on('keyup', e => {
+        
+    const previousValue = $(e.target).data('previousValue');
+    const currentValue = $(e.target).val().trim();
+
+    if(currentValue.length < 3 && previousValue.length >= currentValue.length){
+
+        $("#empresasTable").DataTable().clear().draw();
+        $("#clienteSearch").unbind('keyup');
+        searchAsync("");
+
+    }else if(currentValue.length >= 3){
+
+        $("#empresasTable").DataTable().clear().draw();
+        $("#clienteSearch").unbind('keyup');
+        searchAsync(currentValue);
+
+    }
+
+    });
+
+}
+
+
+    
+</script>

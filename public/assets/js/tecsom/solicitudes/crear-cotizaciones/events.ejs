@@ -1,0 +1,455 @@
+<script>
+
+    $('#viewCot').on('hidden.bs.modal', function () {
+    
+        clearModal();
+
+    })
+
+    $( document ).on( 'click', 'td.more-details-prod-res', function(){
+
+        const tr = $(this).closest('tr');
+        const index = tr.index();
+        const row = $('#resumen-cotizacion-table').DataTable().row(tr);
+        const { extraProdData, fletes } = $('#viewCot').modal().data();
+        const { uuidProduct } = $('#resumen-cotizacion-table').DataTable().row( tr ) .data();
+
+        const flete = fletes.find( ({ productosData }) =>  productosData.find( ({ id }) => id == uuidProduct ) );
+        const producto = flete['productosData'].find( ({ id }) => id == uuidProduct );
+
+        const divisa = $('#select-divisa').val();
+                
+        const { porcentajeUnitario, valorFleteProducto, productos, utilidad, precioUnitario } = producto;
+        const { lugarEntrega, tiempoEntregaFromNum, tiempoEntregaToNum, unidadTiempo, totalFlete } = flete;
+        const { Observaciones, htmlImg, informacionAdicional } = extraProdData[ uuidProduct ];
+
+        if (row.child.isShown()) {
+            
+            row.child.hide();
+            tr.removeClass('shown');
+
+        } else {
+            
+            row.child(format(row.data(), "more-details-resumen.html")).show();
+            tr.addClass('shown');
+            
+            // $("#proveedor-more-details").text(data.Nombre);
+            $("#container-img").append( htmlImg )
+            $("#costo-more-details").text( formatterMoney( divisa, precioUnitario ) );
+            $("#utilidad-more-details").text( utilidad + '%' );
+            $('#info-adicional-resumen').text( informacionAdicional )
+            $('#comentarios-resumen').text( Observaciones )
+
+            $("#fletes-details-row").append(`<div class="col-6"><strong>Lugar de entrega: </strong><span class="flete-more-details">${lugarEntrega}</span></div> <div class="col-6"><strong>Tiempo entrega:</strong> <span class="porcentaje-more-details">De ${tiempoEntregaFromNum} Hasta ${tiempoEntregaToNum} ${unidadTiempo}</span></div>`)
+            $("#fletes-details-row").append(`<div class="col-6"><strong>Flete: </strong><span class="flete-more-details">${ formatterMoney( divisa, valorFleteProducto ) }</span></div> <div class="col-6"><strong>Porcentaje:</strong> <span class="porcentaje-more-details">${porcentajeUnitario}%</span></div>`)
+            $("#fletes-details-row").append(`<div class="col-12"><strong>Flete Total:</strong> <span class="flete-total-more-details">${ formatterMoney( divisa, totalFlete ) }</span></div>`)
+            
+            refreshFsLightbox();
+        }
+
+    });
+
+    $( document ).on( 'click', 'td.more-details-prod-cot', function(){
+
+        const tr = $(this).closest('tr');
+        const row = $('#viewCot1').DataTable().row(tr);
+        const { imgData, informacionAdicional, Observaciones } = row.data();
+        
+        if (row.child.isShown()) {
+        
+            row.child.hide();
+            tr.removeClass('shown');
+        
+        } else {
+            
+            let childHtml = format(row.data(), "productdetails.html");
+            childHtml = childHtml.replace("%InfoAd%", informacionAdicional);
+            childHtml = childHtml.replace("%Comentarios%", Observaciones);
+            childHtml = childHtml.replace("%imagesData%", imgData);
+            row.child(childHtml).show();
+
+            refreshFsLightbox();
+
+        }
+
+    });
+
+    $('#resumenTabBtn').on( 'click', function(){
+
+        clearResumenTab();
+        const { fletes, productos } = $('#viewCot').modal().data();
+        const arrayResumenProds = [];
+        const divisa = $('#select-divisa').val();
+        let subtotalCotizacion = 0;
+        let totalCotizacion = 0;
+        let ivaCotizacion = '-';
+
+        fletes.forEach( ( flete, indexFlete ) => {
+
+            const { productosData, totalFlete, subtotalFlete, fleteImpo, fleteIntl, fleteNtl } = flete;
+
+            productosData.forEach( ( producto, indexProducto ) => {
+                
+                const { id, text, } = producto;
+
+                const { costoUnitario, precioUnitario, utilidad, unidadMedida, cantidad } = productos.find( ({ uuidProduct }) => uuidProduct == id );
+
+                const cantidadParsed = parseFloat( cantidad );
+
+                const importeSinFlete = cantidadParsed * precioUnitario;
+
+                let porcentajeUnitario = ( importeSinFlete * 100 ) / subtotalFlete;
+
+                const porcentajeMultiplicacion = porcentajeUnitario / 100;
+
+                let valorFleteProducto = ( fleteImpo + fleteIntl + fleteNtl ) * porcentajeMultiplicacion;
+
+                const fletePorUnidad = valorFleteProducto/cantidadParsed;
+
+                const precioUnitarioTotal = fletePorUnidad + precioUnitario;
+
+                let precioUnitarioConFlete = precioUnitario + valorFleteProducto;
+
+                let importeTotalProducto = importeSinFlete + valorFleteProducto;
+
+                subtotalCotizacion += importeTotalProducto;
+
+                $('#viewCot').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].importe = importeTotalProducto;
+                $('#viewCot').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].costoUnitario = costoUnitario;
+
+                importeTotalProducto = formatterMoney( divisa, importeTotalProducto );
+                porcentajeUnitario = + parseFloat(porcentajeUnitario).toFixed(2);
+                precioUnitarioConFlete = + parseFloat(precioUnitarioConFlete).toFixed(2);
+                valorFleteProducto = + parseFloat(valorFleteProducto).toFixed(2);
+
+                $('#viewCot').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].porcentajeUnitario = porcentajeUnitario;
+                $('#viewCot').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].precioUnitarioConFlete = precioUnitarioConFlete;
+                $('#viewCot').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].precioUnitarioTotal = precioUnitarioTotal.toFixed(2);
+                $('#viewCot').modal().data().fletes[ indexFlete ].productosData[ indexProducto ].valorFleteProducto = valorFleteProducto;
+                
+
+                arrayResumenProds.push({
+
+                    Descripcion: text,
+                    unidadMedida,
+                    precio: formatterMoney( divisa, precioUnitarioTotal ),
+                    cantidad,
+                    importe: importeTotalProducto,
+                    expandMore: '<i class="material-icons-outlined cursor">expand_more</i>',
+                    uuidProduct: id,
+
+                });
+
+            });
+
+        });
+
+        totalCotizacion = subtotalCotizacion;
+
+        if ($(".divisaCot").val() == "MXN") {
+
+            ivaCotizacion = subtotalCotizacion * 0.16;
+            totalCotizacion += ivaCotizacion;
+            $("#iva-cot").text( formatterMoney( divisa, ivaCotizacion ) );
+
+        } else if (($(".divisaCot").val() == "USD" || $(".divisaCot").val() == "EUR" || $(".divisaCot").val() == "GBP")) {
+
+            $("#iva-cot").text( ivaCotizacion );
+        }
+
+        $("#total-cot").text( formatterMoney( divisa, totalCotizacion ) );
+        $('#subtotal-cot').text( formatterMoney( divisa, subtotalCotizacion ) );
+
+        $('#viewCot').modal().data().cotizacion.total = totalCotizacion;
+        $('#viewCot').modal().data().cotizacion.subtotal = subtotalCotizacion;
+        $('#viewCot').modal().data().cotizacion.iva = ivaCotizacion;
+        $('#viewCot').modal().data().cotizacion.divisa = divisa;
+
+        
+        $('#resumen-cotizacion-table').DataTable().rows.add( arrayResumenProds ).draw();
+
+    });
+
+    $( document ).on( 'click', '.deleteFlete', function(){
+
+        const fletesData = $('#fletesCot').DataTable().rows().data();
+        const index = parseInt( $( this ).parents('tr').index() );
+        const { productosData } = fletesData[ index ];
+
+        for (let i = 0; i < productosData.length; i++) {
+
+            const { text, id } = productosData[i];
+
+            var newOption = new Option( text, id, false, false);
+            $(".productSelectCot").last().append(newOption).trigger('change');
+
+        }
+        $('#fletesCot').DataTable().row($(this).parents('tr')).remove().draw();
+
+    });
+
+    $( document ).on( 'click', '.editFlete', function(){
+
+        $("#fleteCollapse").collapse('show');
+        $("#createFlete").addClass('hide');
+
+        const fletesData = $('#fletesCot').DataTable().rows().data();
+        const index = parseInt( $( this ).parents('tr').index() );
+        const { fleteImpo, fleteIntl, fleteNtl, lugarEntrega, productosData, tiempoEntregaFromNum, tiempoEntregaToNum, unidadTiempo, checkboxLugarEntrega } = fletesData[ index ];
+
+        $(".fleteInfoEntrega").val( lugarEntrega );
+        $(".fleteTiempoFromEntrega").val( tiempoEntregaFromNum );
+        $(".fleteTiempoToEntrega").val(parseInt( tiempoEntregaToNum ));
+        $(".fleteIntl").val( fleteIntl );
+        $(".fleteImpo").val( fleteImpo );
+        $(".fleteNtl").val( fleteNtl );
+
+        if ( checkboxLugarEntrega ) {
+
+            $(".checkboxes-lugar-entrega-diferente").last().prop("checked", true);
+            $(".fleteInfoEntrega").last().prop("disabled", false);
+
+        } else {
+
+            $(".checkboxes-lugar-entrega-diferente").last().prop("checked", false);
+            $(".fleteInfoEntrega").last().prop("disabled", true);
+
+        }
+
+        for( let i = 0; i < productosData.length; i++ ) {
+            
+            const { text, id } = productosData[ i ];
+
+            var newOption = new Option( text, id, true, true);
+            $(".productSelectCot").last().append(newOption).trigger('change');
+        }
+
+        $('#fletesCot').DataTable().row($(this).parents('tr')).remove().draw();
+
+    });
+        
+    $('#cancelFlete').click( function(){
+
+        clearAddFleteInputs();
+
+    });
+
+    $('#addFlete').click( function(){
+
+        const divisa = $(".divisaCot").val();
+
+        const selections = $('.productSelectCot').select2('data');
+        const fletes = document.querySelectorAll(".fleteList .list-group-item");
+        const errorMsg = "";
+        
+        const fleteIntl = parseFloat( formatMoneyToDecimal( $( fletes ).find(".fleteIntl").val() )  );
+        const fleteImpo = parseFloat(  formatMoneyToDecimal( $( fletes ).find(".fleteImpo").val() ) );
+        const fleteNtl = parseFloat(  formatMoneyToDecimal( $( fletes ).find(".fleteNtl").val() ) );
+        
+        totalFlete = fleteIntl + fleteImpo + fleteNtl;
+
+        const lugarEntrega = $( fletes ).find(".fleteInfoEntrega").val();
+        const tiempoEntregaFromNum = $( fletes ).find(".fleteTiempoFromEntrega").val();
+        const tiempoEntregaToNum = $( fletes ).find(".fleteTiempoToEntrega").val();
+        
+        if ( selections.length == 0 || totalFlete == 0 || lugarEntrega == "" || tiempoEntregaFromNum == 0 || tiempoEntregaToNum == 0 ) {
+
+            showNotification( 'error', 'Verifica que los campos del flete estén completos antes de agregarlo.' );
+
+            return;
+
+        }
+        
+        var checkboxLugarEntrega = false;
+        var fleteHTML = '<div class="list-group">';
+
+
+        $( fletes ).find(".checkboxes-lugar-entrega-diferente").is(":checked") == true ? checkboxLugarEntrega = true : checkboxLugarEntrega = false;
+
+        const tiempoEntregaUni = $(fletes).find(".fleteTiempoUni").val();
+        const tiempoEntrega = "De <span class='fromTimeFlete'> " + tiempoEntregaFromNum + "</span> hasta " + "<span class='toTimeFlete'>" + tiempoEntregaToNum + "</span> " + tiempoEntregaUni;
+
+        let fleteTableHTML = format( "X", "fleteTableFormat.html" );
+        fleteTableHTML = fleteTableHTML.replace( "%TiempoEntrega%", tiempoEntrega );
+        fleteTableHTML = fleteTableHTML.replace( "%Fletes%", "Flete intl. - " + formatterMoney( divisa, fleteIntl ) + " | Importación - " + formatterMoney( divisa, fleteImpo ) + " | Flete nacional - " + formatterMoney( divisa, fleteNtl ) );
+        fleteTableHTML = fleteTableHTML.replace( "%LugarEntrega%", lugarEntrega );
+        fleteTableHTML = fleteTableHTML.replace( "%Total%", formatterMoney( divisa, totalFlete ) );
+        fleteHTML += fleteTableHTML;
+        fleteHTML += '</div>';
+
+        let fleteProducts = "";
+        let subtotalFlete = 0;
+        const { productos } = $('#viewCot').modal().data();
+
+        for( let i = 0; i < selections.length; i++ ){
+
+            const{ text, id } = selections[i];
+
+            const { precioUnitario, cantidad, proveedor, utilidad, proveedorName } = productos.find( ({ uuidProduct }) => uuidProduct == id );
+
+            subtotalFlete += ( parseFloat( precioUnitario ) *  parseFloat( cantidad ) );
+
+            selections[i].cantidad = cantidad;
+            selections[i].proveedor = proveedor;
+            selections[i].proveedorName = proveedorName;
+            selections[i].precioUnitario = precioUnitario;
+            selections[i].utilidad = utilidad;
+
+            if (i == selections.length - 1){ //agrega los productos a la tabla de fletes, si solo es 1, no le pone coma
+
+                fleteProducts += text;
+
+            }else{
+
+                fleteProducts += text + " , ";
+
+            }
+
+            $(".productSelectCot option[value='" + selections[i].id + "']").remove();
+
+        }
+
+        $('#fletesCot').DataTable().row.add({
+            
+            "productos": fleteProducts,
+            "flete": fleteHTML,
+            lugarEntrega,
+            tiempoEntregaFromNum,
+            tiempoEntregaToNum,
+            "unidadTiempo": tiempoEntregaUni,
+            "productosData": selections,
+            fleteIntl,
+            fleteImpo,
+            fleteNtl,
+            totalFlete,
+            checkboxLugarEntrega,
+            subtotalFlete,
+            "edit": '<i class="material-icons-outlined moreTable cursor-pointer editFlete">edit</i><i class="material-icons-outlined moreTable cursor-pointer deleteFlete" style="margin-left:15px;">delete</i>',
+
+        }).draw();
+
+        clearAddFleteInputs();
+
+    });
+
+    $(".checkboxes-lugar-entrega-diferente").change(function() {
+
+        const { lugarDeEntrega } = $('#viewCot').modal().data();
+
+        if ($(this).is(":checked")) {
+
+            $(this).parent().parent().children(".fleteInfoEntrega").prop( 'disabled', false );
+            $(this).parent().parent().children(".fleteInfoEntrega").val( '' );
+
+        } else {
+
+            $(this).parent().parent().children(".fleteInfoEntrega").prop( "disabled", true );
+            $(this).parent().parent().children(".fleteInfoEntrega").val( lugarDeEntrega );
+
+        }
+
+    });
+
+    $('#createFlete').click( function(){
+
+        $('#fleteCollapse').collapse('show');
+        $(this).addClass('hide');
+
+    });
+
+    $( '#cot-next-done-btn' ).click( function(){
+
+        $( this ).text('Siguiente');
+
+        if( $('#btn-precios-tab').hasClass('active') ){
+
+            preciosTabDisplay();
+            $('#cot-prev-done-btn').removeClass('hide');
+
+        }else if( $('#btn-fletes-tab').hasClass( 'active' ) ){
+
+            resumenTabDisplay();
+
+        }else if( $('#resumenTabBtn').hasClass( 'active' ) ){
+
+            $( this ).text('Generar cotización');
+            $('#vistaPreviaTabBtn').click();
+
+            const { cotizacion, fletes, productos } = $('#viewCot').modal().data();
+
+            const divisa = $('#select-divisa').val();
+
+            showPDF( cotizacion, fletes, productos, divisa );
+
+        }else if ( $('#vistaPreviaTabBtn').hasClass( 'active' ) ){
+
+            const { cotizacion, fletes, productos } = $('#viewCot').modal().data();
+            console.log({ cotizacion, fletes, productos })
+            postAjax( '/registroCotizacion', { cotizacion, fletes, productos }, res => {
+
+                window.location.reload();
+
+            });
+
+        }
+
+    });
+
+    $('#cot-prev-done-btn').click( function(){
+
+        $( '#cot-next-done-btn' ).text('Siguiente');
+
+        if( $('#btn-fletes-tab').hasClass('active') ){
+
+            $('#cot-prev-done-btn').addClass('hide');
+            $('#btn-precios-tab').click();
+
+        }else if( $('#resumenTabBtn').hasClass('active') ){
+
+            $('#btn-fletes-tab').click();
+
+        }else if( $('#vistaPreviaTabBtn').hasClass( 'active' ) ){
+
+            $('#resumenTabBtn').click();
+
+        }
+
+    });
+
+    $('#vigenciaDays').on( 'change', function(){
+
+        toggleProuctosCotizacion();
+
+    });
+
+    $('#select-divisa').on( 'change', function(){
+
+        changePrefix();
+        toggleProuctosCotizacion();
+
+    });
+
+    $( document ).on( 'click', '.nuevaOpcion', function(){
+
+        nuevaCotizacion( this );
+
+    });
+    
+    $( document ).on( 'click', '.btnCrearCotizacion', function(){
+
+        nuevaCotizacion( this );
+
+    });
+
+    $( document ).ready( function(){
+
+        getSelectHtmlData( ( provedoresSelectHtml ) => {
+
+            $('#viewCot').modal().data( {provedoresSelectHtml} );
+
+        });
+
+    });
+    
+
+</script>

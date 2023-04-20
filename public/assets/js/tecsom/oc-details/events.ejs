@@ -1,0 +1,269 @@
+<script>
+
+
+    $('#eliminar-gasto-imprevisto-btn').click( async function(){
+
+        const buttonDom = $( this );
+        const Loading = new loadingButton(buttonDom,"Enviando");
+        Loading.start();
+
+        const { uuidGastoImprevisto } = $('#eliminar-gasto-imprevisto-modal').data();
+        const uuidVenta = getParam('uuid');
+
+        const { Response } = await asyncPostAjax( '/borrarGastoImprevisto', { uuidVenta, uuidGastoImprevisto } );
+
+        const { Type, Message } = Response;
+
+        if( Type == 'success' ){
+
+            await loadGastosImprevistos();
+            clearModalAndClose( '#eliminar-gasto-imprevisto-modal' );
+
+        }
+
+        Loading.stop();
+        showNotification( Type, Message );
+
+    });
+
+    $( '#editar-gasto-imprevisto-form' ).submit( async function( e ){
+
+        e.preventDefault();
+
+        const { uuidGastoImprevisto } = $('#edit-gasto-imprevisto-modal').data();
+
+        const buttonDom = $('#editar-gasto-imprevisto-btn');
+        const Loading = new loadingButton(buttonDom,"Enviando");
+        Loading.start();
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        formObj.uuidVenta = getParam('uuid');
+        formObj.uuidGastoImprevisto = uuidGastoImprevisto;
+
+        const res = await asyncPostAjax( '/editarGastoImprevisto', formObj );
+        const { Response } = res;
+        const { Type, Message } = Response;
+
+        if( Type == 'success' ){
+
+            await loadGastosImprevistos();
+            clearModalAndClose( '#edit-gasto-imprevisto-modal', '#editar-gasto-imprevisto-form' );
+
+        }
+
+        Loading.stop();
+        showNotification( Type, Message );
+
+    });
+
+    $( document ).on( 'click', '.borrar-gasto-imprevisto-btn', function( e ){
+
+        e.stopPropagation();
+
+        const uuidGastoImprevisto = $(this).closest('a').attr('uuid');
+
+        $('#eliminar-gasto-imprevisto-modal').data({ uuidGastoImprevisto });
+        $('#eliminar-gasto-imprevisto-modal').modal('show');
+
+        });
+
+        $( document ).on( 'click', '.item-gasto-imprevisto', async function( e ){
+
+        const uuidGastoImprevisto = $(this).closest('a').attr('uuid');
+        const uuidVenta = getParam('uuid');
+
+        const dataGastoImprevisto = await asyncPostAjax( '/getGastoImprevisto', { uuidGastoImprevisto, uuidVenta } );
+
+        const { descripcionGastoImprevisto, gasto } = dataGastoImprevisto;
+
+        $('#gasto-input-edit').val( gasto );
+        $('#descripcion-gasto-imprevisto-edit').val( descripcionGastoImprevisto );
+
+        $('#edit-gasto-imprevisto-modal').data({ uuidGastoImprevisto });
+
+        $('#edit-gasto-imprevisto-modal').modal('show');
+
+    });
+
+    $('#nuevo-gasto-imprevisto-form').submit( async function( e ){
+
+        e.preventDefault();
+
+        const buttonDom = $('#generar-gasto-imprevisto-btn');
+        const Loading = new loadingButton(buttonDom,"Enviando");
+        Loading.start();
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        formObj.uuidVenta = getParam('uuid');
+
+        const res = await asyncPostAjax( '/registrarGastoImprevisto', formObj );
+        const { Response } = res;
+        const { Type, Message } = Response;
+
+        if( Type == 'success' ){
+
+            await loadGastosImprevistos();
+            clearModalAndClose( '#gasto-imprevisto-modal', '#nuevo-gasto-imprevisto-form' );
+
+        }
+
+        Loading.stop();
+        showNotification( Type, Message );
+
+    });
+
+    $('#form-estado-oc').submit( async function( e ){
+
+        e.preventDefault();
+
+        const buttonDom = e.originalEvent.submitter; //Botón que  detono el evento submit
+        const button = new loadingButton($(buttonDom),"...Enviando") ;
+        button.start();
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        formObj['uuidVenta'] = getParam('uuid');
+
+        const res = await asyncPostAjax( '/actualizarEstadoOC', formObj );
+
+        const { data, respuesta } = res;
+        const { estado, fecha, nombreUsuario } = data;
+        const { Message, Type } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            $('#lista-estado-oc').prepend(`<a href="#" class="removerEste list-group-item list-group-item-action" aria-current="true">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <p class="mb-1">${estado}</p>
+                                                    <small></small>
+                                                </div>
+                                                <div class="d-flex justify-content-between"> 
+                                                    <small class="mb-1">${ nombreUsuario }</small>
+                                                    <small class="userCom">${ fecha }</small>
+                                                </div>
+                                            </a>`);
+
+
+            $('#estado-text').val( null );
+            
+        }
+
+        button.stop();
+        showNotification( Type, Message );
+
+    });
+
+    $('#atras-btn').click( function(){
+
+        const url = window.location.href;
+        const hostName = get_hostname( url );
+
+        window.location.replace(`${hostName}/ventas`);
+
+    });
+
+    $( document ).ready( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        const estadosArray = await asyncPostAjax( '/getEstadosOC', { uuidVenta } );
+
+        for( const estado of estadosArray ){
+
+            const { estado: estadoMsj, nombreUsuario, fecha, } = estado;
+
+            $('#lista-estado-oc').append(`<a href="#" class="removerEste list-group-item list-group-item-action" aria-current="true">
+                                                <div class="d-flex w-100 justify-content-between">
+                                                    <p class="mb-1">${estadoMsj}</p>
+                                                    <small></small>
+                                                </div>
+                                                <div class="d-flex justify-content-between"> 
+                                                    <small class="mb-1">${ nombreUsuario }</small>
+                                                    <small class="userCom">${ fecha }</small>
+                                                </div>
+                                            </a>`);
+
+        }
+
+        const optionNumber = await asyncPostAjax( '/getCotVersion', { uuidVenta } );
+
+        console.log({ optionNumber });
+
+        let { productos, fletes, cotizacion, tiemposDeEntrega } = await asyncPostAjax( '/getPdfData', { uuidVenta, optionNumber } );
+
+        const { divisa } = cotizacion;
+
+        const { usuario, cliente, compradorOption, clienteNombre, compradorType } = venta;
+
+        cotizacion = {
+
+            ...cotizacion, 
+            usuario, 
+            cliente,
+            compradorType,
+
+        };
+
+        const docPDF = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+        const PdfContainer = document.getElementById('pdf-container');
+
+        docPDF.getDataUrl((url)=>{
+            PdfContainer.setAttribute('src', url);
+        });
+
+        $('#container-spinner').addClass('hide');
+        $('#pdf-container').removeClass('hide');
+
+        const gastosImprevistos = await loadGastosImprevistos();
+
+    });
+
+
+   $("#selectFolioCliente").on('change',function(e){
+    const val = $(this).val();
+    const uuidVenta = getParam('uuid');
+
+
+    var url = window.location.origin + window.location.pathname + '?uuid=' + uuidVenta;
+    if(val != 1){
+        location.href = url +("&FC=")+val
+    }else{
+        if(location.href != url){
+            location.href = url;
+        }
+
+    }
+   })
+</script>

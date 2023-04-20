@@ -1,0 +1,1829 @@
+<script>
+
+    const userData = JSON.parse( '<%- JSON.stringify( userData ) %>' );
+
+    $('#borrar-tiempo-entrega-btn').click( async function(){
+
+        const { uuidTiempoEntrega } = $('#borrar-tiempo-entrega-modal').data();
+        const uuidVenta = getParam('uuid');
+
+        const res = await asyncPostAjax( '/borrarTiempoEntrega', { uuidTiempoEntrega, uuidVenta, optionNumber } );
+
+        const { respuesta, } = res;
+        const { Message, Type } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            loadTiempoEntrega();
+            clearModalAndClose( '#borrar-tiempo-entrega-modal' );
+
+        }
+
+        showNotification( Type, Message );
+
+    });
+
+    $( document ).on( 'click', '.delete-tiempo-entrega', function(){
+
+        const rowIndex = $( this ).closest('tr').index();
+
+        let { uuidTiempoEntrega, } = $('#tiempos-entrega-table').DataTable().row( rowIndex ).data();
+
+        $('#borrar-tiempo-entrega-modal').data({ uuidTiempoEntrega });
+        $('#borrar-tiempo-entrega-modal').modal('show');
+
+    });
+
+    $('#form-editar-tiempo-entrega').submit( async function( e ){
+
+        e.preventDefault();
+
+        const uuidVenta = getParam('uuid');
+        const { uuidTiempoEntrega } = $('#editar-tiempo-entrega-modal').data();
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        formObj['productos'] = $('#edit-select-productos-te').val();
+        formObj['uuidVenta'] = uuidVenta;
+        formObj['optionNumber'] = optionNumber;
+        formObj['uuidTiempoEntrega'] = uuidTiempoEntrega;
+
+        disabled.prop( 'disabled', true );
+
+        const res = await asyncPostAjax( '/editarTiempoDeEntrega', formObj );
+
+        const { respuesta, tiempoDeEntrega } = res;
+        const { Message, Type } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            loadTiempoEntrega();
+            clearModalAndClose( '#editar-tiempo-entrega-modal', '#form-editar-tiempo-entrega' );
+
+        }
+
+        showNotification( Type, Message );
+
+    });
+
+    $( document ).on( 'click', '.edit-tiempo-entrega', function(){
+
+        const rowIndex = $( this ).closest('tr').index();
+
+        let { uuidTiempoEntrega, productos, lugarDeEntrega, tiempoEntregaFromNum, tiempoEntregaToNum, unidadTiempo } = $('#tiempos-entrega-table').DataTable().row( rowIndex ).data();
+
+        $('#edit-lugar-de-entrega').val( lugarDeEntrega );
+        $('#edit-from-num').val( tiempoEntregaFromNum );
+        $('#edit-to-num').val( tiempoEntregaToNum );
+        $('#edit-unidad-tiempo').val( unidadTiempo );
+
+        $('#edit-select-productos-te').empty();
+
+        const productosTable = $('#table-productos').DataTable().rows().data().toArray();
+
+        for( const prodData of productosTable ){
+
+            const { descripcion, uuid: uuidProducto } = prodData;
+            
+            const tableData = $('#tiempos-entrega-table').DataTable().rows().data().toArray();
+
+            if( !tableData.find( tiempoEntrega => tiempoEntrega.productos.find( prod  => prod == uuidProducto  ) ) ){
+
+                // hasProds = true;
+
+                $('#edit-select-productos-te').append($('<option>', {
+                    
+                    value: uuidProducto,
+                    text: descripcion,
+            
+                }));
+            }
+
+        }
+
+        for( const uuidProducto of productos ){
+
+            const { descripcion } = productosTable.find( prod => prod.uuid == uuidProducto );
+
+            $('#edit-select-productos-te').append($('<option>', {
+                    
+                value: uuidProducto,
+                text: descripcion,
+            
+            }));
+
+
+        }
+
+        $('#edit-select-productos-te').val( productos ).trigger('change');
+
+        $('#editar-tiempo-entrega-modal').data({ uuidTiempoEntrega })
+        $('#editar-tiempo-entrega-modal').modal('show');
+
+    });
+
+    $('#form-tiempo-entrega').submit( async function( e ){
+
+        e.preventDefault();
+
+        const { uuid, uuidProductoSeleccionado } = $('#cotizar-producto-modal').data();
+        const uuidVenta = getParam('uuid');
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        formObj['productos'] = $('#select-productos-te').val();
+        formObj['uuidVenta'] = uuidVenta;
+        formObj['optionNumber'] = optionNumber;
+
+        disabled.prop( 'disabled', true );
+
+        const res = await asyncPostAjax( '/registrarTiempoEntrega', formObj );
+
+        const { respuesta, tiempoDeEntrega } = res;
+        const { Message, Type } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            loadTiempoEntrega();
+            clearModalAndClose( '#crear-tiempo-entrega-modal', '#form-tiempo-entrega' );
+
+        }
+
+        showNotification( Type, Message );
+
+    });
+    
+    $('#crear-tiempo-entrega-btn').click( function(){
+
+        $('#select-productos-te').empty();
+
+        const productos = $('#table-productos').DataTable().rows().data().toArray();
+
+        for( const prodData of productos ){
+
+            const { descripcion, uuid: uuidProducto } = prodData;
+            
+            const tableData = $('#tiempos-entrega-table').DataTable().rows().data().toArray();
+
+            if( !tableData.find( tiempoEntrega => tiempoEntrega.productos.find(prod  => prod == uuidProducto ) ) ){
+
+                // hasProds = true;
+
+                $('#select-productos-te').append($('<option>', {
+                    
+                    value: uuidProducto,
+                    text: descripcion,
+            
+                }));
+            }
+
+        }
+
+        $('#crear-tiempo-entrega-modal').modal('show');
+
+    });
+
+    $('.seleccionar-todos-prods').click( async function( e ){
+
+        if( $( this )[0].checked ){
+
+            console.log('clickity')
+
+            const uuidVenta = getParam('uuid');
+
+            const productos = await asyncPostAjax( '/getProductosCotizadosEnVenta', { uuidVenta, optionNumber } );
+
+            $( this ).parent().parent().find('select').val( productos ).trigger('change');
+
+        }else{
+            
+            $( this ).parent().parent().find('select').find('option').prop('selected', false).trigger('change');
+
+        }
+
+    });
+
+    $("form").keypress(function(e) {
+
+        if (e.which == 13) {
+        
+            return false;
+        
+        }
+
+    });
+
+    $('#generar-cotizacion-modal-btn2').click( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        await asyncPostAjax( '/registrarCotizacion', { uuidVenta, optionNumber } );
+
+        location.reload();
+
+        Cookies.remove(`tab-${uuidVenta}`);
+
+
+    });
+
+    $('#generar-cotizacion-modal-btn').click( async function(){
+        const buttonDom = $(this);
+        const Loading = new loadingButton(buttonDom,"Enviando");
+        Loading.start();
+
+        const isSendMail= !$("#isSendMail").is(":checked");
+
+        const mensajeExtra = $("#mensajeExtra").val();
+        console.log({mensajeExtra})
+
+        const mailListing = $("#mailList").data('mailList') ?? [];
+
+        const uuidVenta = getParam('uuid');
+
+        const res = await asyncPostAjax( '/calcularTotalesCotizacion', { uuidVenta, optionNumber } );
+
+        const { total, totalFletes, numeroDeFletes, numeroDeOtros, subtotal, objProductos: productos, iva, objFletes , utilidadTotal, porcentajeMargenUtilida } = res;
+
+        const divisa = $('.divisaCot').val();
+
+        let { cotizacion } =  $('#card-container').data();
+
+        cotizacion = { 
+
+            ...cotizacion,
+            total,
+            iva,
+            subtotal,
+
+        };
+
+        $('#card-container').data({ cotizacion });
+
+        const tiemposDeEntrega = await asyncPostAjax( '/getTiemposEntrega', { uuidVenta, optionNumber } );
+        
+        const doc = await getPDF( cotizacion, tiemposDeEntrega, productos, divisa );
+    
+        doc.getDataUrl(async (base64PDF)=>{
+
+            const {Response} = await asyncPostAjax( '/registrarCotizacion', { uuidVenta, optionNumber , isSendMail, mailListing, mensajeExtra, base64PDF} );
+
+            showNotification(Response.Type,Response.Message);
+
+            if(Response.Type == "success"){
+                location.reload();
+
+            }
+
+            Cookies.remove(`tab-${uuidVenta}`);
+            Loading.stop();
+
+        });
+
+        
+    });
+   
+    $('#declinar-venta').click( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        await asyncPostAjax( '/declinarVenta', { uuidVenta } );
+
+    });
+
+    $('#generar-cotizacion-btn').click( async function(){
+
+        const boton = new loadingButton( $( this ), 'Cargando' );
+
+        boton.start();
+
+        const uuidVenta = getParam('uuid');
+
+        await asyncPostAjax( '/calcularTotalesCotizacion', { uuidVenta, optionNumber } );
+
+        const res = await asyncPostAjax( '/validateCotizacion', { uuidVenta, optionNumber } );
+
+        boton.stop();
+
+        const { productosSinCotizar, productosSinFlete, respuesta } = res;
+
+        const { Response } = respuesta;
+
+        if( productosSinCotizar.length > 0 ){
+
+            $('#lista-prods-sin-cotizar').empty();
+
+            for( const producto of productosSinCotizar ){
+
+                $('#lista-prods-sin-cotizar').append(`<li class="list-group-item d-flex justify-content-between" >
+                            <span><strong>${ producto }</strong></span>
+                        </li>`);
+
+            }
+
+            $('#productos-sin-cotizar-modal').modal('show');
+            return;
+
+        }
+
+        if( Response.Type == 'error' ){
+
+            showNotification( Response.Type, Response.Message  );
+            return;
+
+        }
+
+        $('#generar-cotizacion').modal('show');
+
+    });
+
+    $('#vigenciaDays').focusout( async function(){
+
+        const uuidVenta = getParam('uuid');
+        const vigencia = $( this ).val();
+
+        $( this ).prop( 'disabled', true );
+
+        const res = await asyncPostAjax( '/saveVigencia', { vigencia, uuidVenta, optionNumber } );
+        const { Response } = res.respuesta;
+
+        if( Response.Type == 'success' ){
+
+            $('#card-container').data({ vigencia });
+            calculateVistaPrevia();
+
+        }
+
+        showNotification( Response.Type, Response.Message );
+
+        $( this ).prop( 'disabled', false );
+
+    });
+
+    $('#atras-cotizacion-btn').click( function(){
+
+        $('#tab-cot-prod').removeClass( 'pe-none' );
+        $('#historial-tab').click();
+        $('#tab-cot-prod').addClass( 'pe-none' );
+        $( this ).addClass( 'hide' );
+        $('#cotizar-producto-btn').addClass('hide');
+        $('#atras-cotizacion-btn').addClass('hide');
+
+        $( '#siguiente-cotizacion-btn' ).removeClass('hide');
+
+    });
+
+    $( '#siguiente-cotizacion-btn' ).click( function(){
+
+        $('#cotizar-tab').click();
+        $( this ).addClass( 'hide' );
+        $('#cotizar-producto-btn').removeClass('hide');
+        $('#atras-cotizacion-btn').removeClass('hide');
+
+        const { uuidProductoSeleccionado, cotizacionData, mainCotizacionData, solicitudData } = $('#cotizar-producto-modal').data();
+        
+        if( uuidProductoSeleccionado && cotizacionData && mainCotizacionData && solicitudData ){
+
+            const { divisa } = mainCotizacionData;
+            const { proveedor, costoUnitario, utilidad } = cotizacionData;
+            const { folioCotizacion } = solicitudData;
+
+            $('#proveedorHelp').text( proveedor );
+            $('#costoHelp').text( formatterMoney( divisa, costoUnitario ) );
+            $('#utilidadHelp').text( `${utilidad}%` );
+            $('#folioHelp').text( `XSEL-${ folioCotizacion }` );
+
+        }
+
+        const checkboxProdHistorial = $( '#checkbox-prod-no-hist' )[0].checked;
+
+        if( checkboxProdHistorial ){
+
+            $('#container-proveedorHelp').addClass('hide');
+            $('#container-costoHelp').addClass('hide');
+            $('#container-utilidadHelp').addClass('hide');
+            $('#container-folioHelp').addClass('hide');
+
+        }else{
+
+            $('#container-proveedorHelp').removeClass('hide');
+            $('#container-costoHelp').removeClass('hide');
+            $('#container-utilidadHelp').removeClass('hide');
+            $('#container-folioHelp').removeClass('hide');
+
+        }
+
+    });
+
+    $( document ).on( 'click', '.deseleccionar-prod-historial', function(){
+
+        $('.options-historial:not(.active)').each( ( index, elm ) => {
+
+            $( elm ).removeClass('hide');
+
+        });
+
+        $( this ).closest('.options-historial').removeClass('active');
+        $( this ).text( 'Seleccionar' );
+        $( this ).addClass('btn-success').removeClass('btn-danger').removeClass('deseleccionar-prod-historial');
+
+        $('#cotizar-producto-modal').data({ uuidProductoSeleccionado: null, cotizacionData: null, mainCotizacionData: null, solicitudData: null });
+        $('#siguiente-cotizacion-btn').prop( 'disabled', true );
+
+        $('#descripcion-interna').val( null );
+        $('#referencia-cot').val( null );
+        
+
+        $('#unidadMedida').val( null ).trigger('change');
+
+        $('#siguiente-cotizacion-btn').prop( 'disabled', false );
+
+        $('#collapse-fields-prod-cot').collapse('hide');
+
+        $('#descripcion-interna').prop( 'disabled', false );
+        $('#referencia-cot').prop( 'disabled', false );
+        $('#unidadMedida').prop( 'disabled', false );
+
+    });
+    
+    $( document ).on( 'click', '.seleccionar-prod-historial:not(.deseleccionar-prod-historial)', function(){
+
+        const uuidProductoSeleccionado = $( this ).closest('.options-historial').attr('uuid');
+
+        $('#cotizar-producto-modal').data({ uuidProductoSeleccionado });
+
+        const productosArray = $('#table-productos').DataTable().rows().data();
+
+        const productoData = productosArray.filter( ({ uuid }) => uuid != uuidProductoSeleccionado );
+
+        $( '.options-historial' ).removeClass('active');
+        $('.deseleccionar-prod-historial').text('Seleccionar').removeClass('deseleccionar-prod-historial').addClass('btn-success').removeClass('btn-danger');
+
+        $( this ).closest('.options-historial').addClass('active');
+        $( this ).text( 'Deseleccionar' );
+        $( this ).removeClass('btn-success').addClass('btn-danger').addClass('deseleccionar-prod-historial');
+
+        $('.options-historial:not(.active)').each( ( index, elm ) => {
+
+            $( elm ).addClass('hide');
+
+        });
+
+        const { resultadosProductos } = $('#collapse-resultados-cot-prod').data();
+
+        const producto = resultadosProductos.filter( ({ prodData })=> prodData.uuid == uuidProductoSeleccionado );
+
+        const { descripcion, unidadMedidaNombre, unidadMedida, referencia } = producto[0].prodData;
+
+        const { cotizacionData, mainCotizacionData, solicitudData } = producto[0];
+
+        $('#cotizar-producto-modal').data({ uuidProductoSeleccionado, cotizacionData, mainCotizacionData, solicitudData });
+
+        $('#descripcion-interna').val( descripcion );
+        $('#referencia-cot').val( referencia );
+        
+        var newOption = new Option( unidadMedidaNombre, unidadMedida, false, false);
+        $('#unidadMedida').append( newOption ).trigger('change');
+
+        $('#siguiente-cotizacion-btn').prop( 'disabled', false );
+
+        $('#collapse-fields-prod-cot').collapse('show');
+
+        $('#descripcion-interna').prop( 'disabled', true );
+        $('#referencia-cot').prop( 'disabled', true );
+        $('#unidadMedida').prop( 'disabled', true );
+
+    });
+
+    $( document ).on( 'mouseover', '.options-historial', function(){
+
+        $( this ).find('.container-info-resultados').removeClass('col-12').addClass('col-7');
+        $( this ).find('.container-btns-resultados').removeClass('hide').addClass('col-5');
+        
+    });
+
+    $( document ).on( 'mouseleave', '.options-historial', function(){
+
+        $( this ).find('.container-info-resultados').removeClass('col-7').addClass('col-12');
+        $( this ).find('.container-btns-resultados').addClass('hide').removeClass('col-5');
+
+    });
+
+    $('#busqueda-historial-btn').on( 'click', async function(){
+
+        const descripcionCliente = $('#busqueda-historial').val();
+
+        searchProduct( descripcionCliente );
+
+    });
+
+    $('#form-cot-prod').submit( async function( e ){
+
+        e.preventDefault();
+
+        const { uuid, uuidProductoSeleccionado } = $('#cotizar-producto-modal').data();
+        const uuidVenta = getParam('uuid');
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        disabled.prop( 'disabled', true );
+
+        const res = await asyncPostAjax( '/cotizarProducto', { uuidProductoSeleccionado, uuidVenta, optionNumber, uuidProductoSinCot: uuid, cotizacion: formObj } );
+
+        const { respuesta, cotizacion } = res;
+
+        const { Type, Message } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            const newUuid = cotizacion.uuid;
+
+            const { rowIndex } = $('#cotizar-producto-modal').data();
+
+            const row = $('#table-productos > tbody > tr').eq( rowIndex );
+
+            let oldData = $('#table-productos').DataTable().row( row ).data();
+
+            oldData.statusBadge = `<h6><span class="badge badge-style-light badge-success">Cotizada</span></h6>`;
+            oldData.btnCotizar = `<button type="button" class="btn btn-info btn-style-light editar-cotizacion-prod">Editar</button>`;
+            delete oldData.descripcion;
+            delete oldData.proveedor;
+            delete oldData.proveedorUuid;
+            delete oldData.uuid;
+
+            const { descripcion,  proveedor, proveedorUuid } = cotizacion;
+
+            $('#table-productos').DataTable().row( row ).data({ ...oldData, ...cotizacion });
+
+            const { uuid } = oldData;
+
+            let { productos } = $('#card-container').data();
+            
+
+
+            productos[ newUuid ] = { 
+                
+                ...productos[ uuid ],
+                descripcion,
+                proveedor,
+                proveedorUuid,
+                
+            }
+            
+            delete productos.uuid
+            $('#card-container').data({ productos });
+
+            clearModalAndClose( '#cotizar-producto-modal', '#form-cot-prod' );
+
+            $('#cotizar-producto-btn').addClass('hide');
+            $('#atras-cotizacion-btn').addClass('hide');
+
+            $('#siguiente-cotizacion-btn').removeClass('hide');
+
+            $('#tab-cot-prod').removeClass( 'pe-none' );
+            $('#historial-tab').click();
+            $('#tab-cot-prod').addClass( 'pe-none' );
+
+
+            $('#busqueda-historial').val( null );
+            $('#descripcion-interna').val( null );
+            $('#referencia-cot').val( null );
+            $('#unidadMedida').val( null ).trigger('change');
+
+            if( $('#checkbox-prod-no-hist')[0].checked ) $('#checkbox-prod-no-hist').click();
+
+            $('#cotizar-producto-modal').data({ uuidProductoSeleccionado: null });
+
+        }
+
+        showNotification( Type, Message );
+    
+    });
+
+    $('#checkbox-prod-no-hist').on( 'change', function(){
+
+        $('#cotizar-producto-modal').data({ uuidProductoSeleccionado: null, cotizacionData: null, mainCotizacionData: null, solicitudData: null });
+
+        $('#descripcion-interna').val(null);
+        $('#referencia-cot').val(null);
+        $('#unidadMedida').val(null).trigger('change');
+
+        if( $( this )[0].checked ){
+
+            $('#collapse-resultados-cot-prod').collapse('hide');
+            $('#collapse-fields-prod-cot').collapse('show');
+
+            $('#descripcion-interna').prop( 'disabled', false );
+            $('#referencia-cot').prop( 'disabled', false );
+            $('#unidadMedida').prop( 'disabled', false );
+            $('#siguiente-cotizacion-btn').prop( 'disabled', false );
+
+
+        }else{
+
+            $('.deseleccionar-prod-historial').click();
+
+            $('#collapse-resultados-cot-prod').collapse('show');
+            $('#collapse-fields-prod-cot').collapse('hide');
+
+            $('#siguiente-cotizacion-btn').prop( 'disabled', true );
+
+        }   
+
+    });
+
+    $('#agregar-flete-form').submit( async function( e ){
+
+        e.preventDefault();
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const uuidVenta = getParam('uuid');
+
+        const serializedData = $( this ).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+        
+        formObj = {
+
+            ...formObj,
+            productos: formObj.tipo == 'flete' ? $(".productSelectCot").val() : $("#select-productos-otros").val(),
+            // checkboxLugarEntrega: !formObj.checkboxLugarEntrega ? 'false': formObj.checkboxLugarEntrega,
+            uuidVenta,
+            optionNumber
+
+        };
+
+        formObj.checkboxLugarEntrega = $('#checkbox-lugar-entrega-diferente').is(':checked');
+
+        console.log({ formObj })
+
+        disabled.attr('disabled','disabled');
+
+
+        const res = await asyncPostAjax( '/guardarFlete', formObj );
+
+        let { respuesta, flete }  = res;
+    
+        const { Type, Message } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            const { descripcionFleteImportacion, descripcionFleteIntl, descripcionFleteNtl, descripcionGasto, tipoGasto } = flete;
+
+            const arrayDescFletes = [ descripcionFleteImportacion, descripcionFleteIntl, descripcionFleteNtl, descripcionGasto ].filter( elm => elm );
+            
+            if( arrayDescFletes.length > 1 && tipoGasto == 'flete' ){
+                
+                flete.descripcionFlete = 'Múltiple';
+                
+            }else if( arrayDescFletes.length <= 1 || tipoGasto == 'otro'  ){
+                
+                flete.descripcionFlete = arrayDescFletes[0];
+                
+            }
+
+            agregarFleteATabla( flete );
+            $('#editar-flete-modal').data({ btnSaveClicked: true });
+            clearModalAndClose( '#agregar-flete-modal', '#agregar-flete-form' );
+
+        }
+
+        showNotification( Type, Message );
+
+    });
+
+    $('#editar-flete-form').submit( async function( e ){
+
+        e.preventDefault(); 
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const { uuidFlete } = $('#editar-flete-modal').data();
+        const uuidVenta = getParam('uuid');
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+        
+        formObj = {
+
+            ...formObj,
+            productos: formObj.tipo == 'flete' ? $("#productSelectCot-edit").val() : $("#select-productos-otros-edit").val(),
+            uuidFlete,
+            uuidVenta,
+            optionNumber
+
+        };
+
+        formObj.checkboxLugarEntrega = $('#checkbox-lugar-entrega-diferente').is(':checked');
+
+        console.log({ formObj })
+
+        disabled.attr('disabled','disabled');
+
+        const res = await asyncPostAjax( '/editFlete', formObj );
+
+        const { respuesta, flete }  = res;
+    
+        const { Type, Message } = respuesta.Response;
+
+        if( Type == 'success' ){
+
+            // agregarFleteATabla( flete );
+            await loadFletes();
+            $('#editar-flete-modal').data({ btnSaveClicked: true });
+            clearModalAndClose( '#editar-flete-modal', '#editar-flete-form' );
+
+        }
+
+        showNotification( Type, Message );
+
+    });
+
+    $( document ).on( 'click', '.info-gasto-flete', function(){
+
+        const row = $( this ).closest('tr');
+
+        const rowData = $('#fletesCot').DataTable().row( row ).data();
+        const { fleteImpo, fleteIntl, fleteNtl } = rowData;
+
+        $('#flete-impo-info').text( formatterMoney( divisa, fleteImpo ) );
+        $('#flete-ntl-info').text( formatterMoney( divisa, fleteNtl ) );
+        $('#flete-intl-info').text( formatterMoney( divisa, fleteIntl ) );
+
+        $('#ver-info-gasto-modal').modal('show');
+
+    });
+
+    $( document ).on( 'click', '.avatar-productos', function(){
+
+        $('#lista-partidas-flete').html('');
+
+        const row = $( this ).closest('tr');
+
+        const rowData = $('#fletesCot').DataTable().row( row ).data();
+        const { productosData } = rowData;
+
+        for( const producto of productosData ){
+
+            const { descripcion } = producto;
+
+            $('#lista-partidas-flete').append(`
+            
+                <li class="list-group-item">${ descripcion }</li>
+
+            `);
+
+        }
+
+        $('#ver-productos-modal').modal('show');
+
+    });
+
+    $('#editar-flete-modal').on('hidden.bs.modal', function () {
+        
+        const { editMode, btnSaveClicked } = $('#editar-flete-modal').data();
+
+        if( editMode && !btnSaveClicked  ){
+
+            $('#fletesCot').DataTable().row.add( editMode ).draw();
+        }
+
+        $('#editar-flete-modal').data({ uuidFlete: null, editMode: null, btnSaveClicked: null });
+
+    });
+
+    $('.productSelectCot').on( 'select2:select', async function( e ){
+
+        isProdCot( '.productSelectCot' );
+
+    });
+
+    $('#select-productos-otros').on( 'select2:select', async function( e ){
+
+        isProdCot( '#select-productos-otros' );
+
+    });
+
+    $('#select-productos-otros-edit').on( 'select2:select', async function( e ){
+
+        isProdCot( '#select-productos-otros-edit' );
+
+    });
+    
+    $('#productSelectCot-edit').on( 'select2:select', async function( e ){
+
+        isProdCot('#productSelectCot-edit');
+
+    });
+
+    $('#crear-flete-btn').click( async function(){
+
+        clearModalAndClose( '#agregar-flete-modal', '#agregar-flete-form' );
+
+        $('.fleteIntl').inputmask();
+        $('.fleteIntl').val('0');
+        $('.fleteImpo').inputmask();
+        $('.fleteImpo').val('0');
+        $('.fleteNtl').inputmask();
+        $('.fleteNtl').val('0');
+
+        $('.productSelectCot').empty();
+        $('#select-productos-otros').empty();
+
+        const uuidVenta = getParam('uuid');
+
+        const tableData = $('#fletesCot').DataTable().rows().data().toArray();
+
+        // const { productos } = $('#card-container').data();
+
+        const productos = $('#table-productos').DataTable().rows().data().toArray();
+
+        // let hasProds = false;
+
+        for( const prodData of productos ){
+
+            const { descripcion, uuid: uuidProducto } = prodData;
+
+            $('#select-productos-otros').append($('<option>', {
+                    
+                value: uuidProducto,
+                text: descripcion,
+        
+            }));
+
+            $('.productSelectCot').append($('<option>', {
+                    
+                value: uuidProducto,
+                text: descripcion,
+    
+            }));
+
+            // if( !tableData.find( flete => flete.productosData.find(prod  => prod.id == uuidProducto && flete.tipo == 'flete' ) ) ){
+
+            //     hasProds = true;
+
+            //     $('.productSelectCot').append($('<option>', {
+                    
+            //         value: uuidProducto,
+            //         text: descripcion,
+        
+            //     }));
+
+            // }
+
+        }
+
+        $('#tipo-gasto-flete').prop('disabled', false);
+        $('#flete-collapse').hide();
+        $('#otro-collapse').hide();
+        $('#tipo-gasto-flete').prop('checked', false)
+        $('#tipo-gasto-otro').prop('checked', false)
+
+        $('#agregar-flete-modal').modal('show');
+
+    });
+
+    $( document ).on( 'click', '.more-info-prod-btn', function(){
+
+        const rowIndex = $( this ).parents('tr').index();
+
+        const rowData = $('#table-productos').DataTable().row( rowIndex ).data();
+
+        const { costoUnitario, descripcionCliente, numeroAlterno, numeroParte, precioUnitario, proveedor, referencia, utilidad } = rowData;
+
+        $('#descripcion-info').text( descripcionCliente );
+        $('#numeroAlterno-info').text( hypenIfNull( numeroAlterno ) );
+        $('#numeroParte-info').text( hypenIfNull( numeroParte ) );
+        $('#referencia-info').text( hypenIfNull( referencia ) );
+        $('#costoUnitario-info').text( hypenIfNull( costoUnitario ) );
+        $('#precioUnitario-info').text( hypenIfNull( precioUnitario ) );
+        $('#proveedor-info').text( hypenIfNull( proveedor ) );
+        $('#utilidad-info').text( `${ hypenIfNull( utilidad  ) } %` );
+
+    });
+
+   
+
+    $('#confirmar-borrar-flete-btn').click( async function(){
+
+        const fletesData = $('#fletesCot').DataTable().rows().data();
+        const { index } = $('#borrar-flete-conf').data();
+
+        const { productosData, uuidFlete } = fletesData[ index ];
+        const uuidVenta = getParam( 'uuid' );
+
+        for (let i = 0; i < productosData.length; i++) {
+
+            const { text, id } = productosData[i];
+
+            var newOption = new Option( text, id, false, false);
+            $(".productSelectCot").last().append(newOption).trigger('change');
+
+        }
+
+        $( '#fletesCot' ).DataTable().row( index ).remove().draw();
+
+        const { fletes } = $('#card-container').data(); //agregar fletes a array
+
+        fletes.splice( index, 1 );
+
+        $('#card-container').data({ fletes, uuidVenta });
+
+        const { Response } = await asyncPostAjax( '/deleteFletes', { uuidFlete, uuidVenta, optionNumber } );
+
+        $('#borrar-flete-conf').modal('hide');
+        $('#borrar-flete-conf').data({ index: null });
+
+        showNotification( Response.Type, Response.Message )
+
+    });
+
+    $( document ).on( 'click', '.deleteFlete', async function(){
+
+        const fletesData = $('#fletesCot').DataTable().rows().data();
+        const index = parseInt( $( this ).parents('tr').index() );
+
+        $('#borrar-flete-conf').modal('show');
+        $('#borrar-flete-conf').data({ index });
+
+    });
+
+    $( document ).on( 'click', '.editFlete', function(){
+
+        $('#editar-flete-modal').data({ btnSaveClicked: null })
+
+        const fletesData = $('#fletesCot').DataTable().rows().data();
+        const index = parseInt( $( this ).parents('tr').index() );
+        const { fleteImpo, fleteIntl, fleteNtl, lugarEntrega, productosData, tiempoEntregaFromNum, tiempoEntregaToNum, unidadTiempo, 
+                checkboxLugarEntrega, uuidFlete, descripcionGasto, tipo, gasto, descripcionFleteImportacion, descripcionFleteIntl, descripcionFleteNtl
+                } = fletesData[ index ];
+
+        const idSelect = tipo == 'flete' ? '#productSelectCot-edit' : '#select-productos-otros-edit';
+
+        if( tipo == 'flete' ){
+
+            $('#tipo-gasto-flete-edit').prop( 'disabled', false );
+            $('#tipo-gasto-otro-edit').prop( 'disabled', true );
+            $('#tipo-gasto-flete-edit').click();
+
+        }else{
+
+            $('#tipo-gasto-flete-edit').prop( 'disabled', true );
+            $('#tipo-gasto-otro-edit').prop( 'disabled', false );
+            $('#tipo-gasto-otro-edit').click();
+
+        }
+
+        $('#editar-flete-modal').data({ uuidFlete });
+
+        $('#descripcion-fleteIntl-edit').val( descripcionFleteIntl );
+        $('#descripcion-fleteNtl-edit').val( descripcionFleteNtl );
+        $('#descripcion-fleteImportacion-edit').val( descripcionFleteImportacion );
+        $(".fleteInfoEntrega-edit").val( lugarEntrega );
+        $(".fleteTiempoFromEntrega-edit").val( tiempoEntregaFromNum );
+        $(".fleteTiempoToEntrega-edit").val(parseInt( tiempoEntregaToNum ));
+        $(".fleteIntl-edit").val( fleteIntl );
+        $(".fleteImpo-edit").val( fleteImpo );
+        $(".fleteNtl-edit").val( fleteNtl );
+        $("#otro-gasto-costo-edit").val( gasto )
+
+        if ( checkboxLugarEntrega ) {
+
+            $(".checkboxes-lugar-entrega-diferente-edit").last().prop("checked", true);
+            $(".fleteInfoEntrega-edit").last().prop("disabled", false);
+
+        } else {
+
+            $(".checkboxes-lugar-entrega-diferente-edit").last().prop("checked", false);
+            $(".fleteInfoEntrega-edit").last().prop("disabled", true);
+
+        }
+
+
+        const uuidsArray = [];
+        for( let i = 0; i < productosData.length; i++ ) {
+
+            const { descripcion: text, id } = productosData[ i ];
+
+            uuidsArray.push( id );
+
+        }
+
+        if( tipo == 'flete' ){
+
+            $("#productSelectCot-edit").val( uuidsArray ).trigger('change');
+
+        }else{
+
+            $("#select-productos-otros-edit").val( uuidsArray ).trigger('change');
+
+        }
+
+
+        const tableData = $('#fletesCot').DataTable().rows().data().toArray();
+
+        const { productos } = $('#card-container').data();
+
+        let hasProds = false;
+
+        $('#fletesCot').DataTable().row($(this).parents('tr')).remove().draw();
+
+        $('#editar-flete-modal').modal('show');
+
+        const { fletes } = $('#card-container').data(); //agregar fletes a array
+
+        fletes.splice(index, 1);
+
+        $('#card-container').data({ fletes });
+
+        $('#editar-flete-modal').data({ editMode: fletesData[ index ] });
+
+    });
+
+    $('#cancelFlete').click( function(){
+
+        clearAddFleteInputs();
+
+    });
+
+    $(".checkboxes-lugar-entrega-diferente").change(function() {
+
+        const { lugarDeEntrega, localizacion } = $('#card-container').data();
+
+        if ($( this ).is(":checked")) {
+ 
+            $( this ).parent().parent().children(".fleteInfoEntrega").prop( 'disabled', false );
+            $( this ).parent().parent().children(".fleteInfoEntrega").val( '' );
+            $('#flete-frontera-cb').prop( 'disabled', false );
+            $('#flete-dentro-cb').prop( 'disabled', false );
+ 
+         } else  {
+
+            $( this ).parent().parent().children(".fleteInfoEntrega").prop( "disabled", true );
+            $( this ).parent().parent().children(".fleteInfoEntrega").val( lugarDeEntrega );
+
+            if( localizacion == 'Dentro de la Republica' ){
+
+                $('#flete-dentro-cb').prop( 'checked',true );
+            
+            }else{
+
+                $('#flete-frontera-cb').prop( 'checked', true );
+
+            }
+
+            $('#flete-frontera-cb').prop( 'disabled', true );
+            $('#flete-dentro-cb').prop( 'disabled', true );
+
+        }
+
+    });
+
+    $('#createFlete').click( function(){
+
+        $('#fleteCollapse').collapse('show');
+        $( this ).addClass('hide');
+
+    });
+
+    $( '.divisaCot' ).on( 'change', async function(){
+
+        const currency = $('.divisaCot').val();
+
+        $('.precioUnitario').each( function(){
+
+            let value = $( this ).html();
+
+            switch ( currency ) {
+                case 'MXN':
+                case 'USD':
+                    value = value.replace( '€', '$' ).replace( '£', '$' );
+                    break;
+                case 'EUR':
+                    value = value.replace( '$', '€' ).replace( '£', '€' );
+                    break;
+                case 'GBP':
+                    value = value.replace( '$', '£' ).replace( '€', '£' );
+                    break;
+                default:
+                    break;
+            }
+
+            $( this ).html( value );
+
+        });
+
+
+        
+        $('.input-money-mask').each( function(){
+
+            if(currency == "MXN") {
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0', 'clearMaskOnLostFocus': false");
+            }else if (currency == "USD") {
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '$ ', 'placeholder': '0', 'clearMaskOnLostFocus': false");
+            }else if (currency == "EUR") {
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '€ ', 'placeholder': '0', 'clearMaskOnLostFocus': false");
+            }else if (currency == "GBP") {
+                $( this ).attr("data-inputmask", "'alias': 'currency', 'groupSeparator': ',', 'autoGroup': true, 'digits': 2, 'digitsOptional': false, 'prefix': '£ ', 'placeholder': '0', 'clearMaskOnLostFocus': false");
+            }
+            $( this ).inputmask();
+        });
+
+        const { divisa } = $('#card-container').data();
+
+        let oldCostoUnitario = $('#costo-unitario-row-det').text();
+        oldCostoUnitario = formatMoneyToDecimal( oldCostoUnitario );
+        oldCostoUnitario = formatterMoney( currency, oldCostoUnitario );
+        $('#costo-unitario-row-det').text( oldCostoUnitario );
+
+        let oldUtilidad = $('#utilidad-row-det').text();
+        oldUtilidad = formatMoneyToDecimal( oldUtilidad );
+        oldUtilidad = formatterMoney( currency, oldUtilidad );
+        $('#utilidad-row-det').text( oldUtilidad );
+
+        let oldFleteProrrateado = $('#valor-flete-row-det').text();
+        oldFleteProrrateado = formatMoneyToDecimal( oldFleteProrrateado );
+        oldFleteProrrateado = formatterMoney( currency, oldFleteProrrateado );
+        $('#valor-flete-row-det').text( oldFleteProrrateado );
+
+        let oldOtrosGastos = $('#otros-gastos-row-det').text();
+        oldOtrosGastos = formatMoneyToDecimal( oldOtrosGastos );
+        oldOtrosGastos = formatterMoney( currency, oldOtrosGastos );
+        $('#otros-gastos-row-det').text( oldOtrosGastos );
+
+        
+        
+        if( divisa == currency ) return;
+
+        const uuidVenta = getParam('uuid');
+
+        const { Response } = await asyncPostAjax( '/saveDivisa', { divisa: currency, uuidVenta, optionNumber } );
+
+        if( Response.Type == 'success' ) $('#card-container').data({ divisa: currency });
+
+        showNotification( Response.Type, Response.Message );
+        
+        await calculateVistaPrevia();
+
+    });
+
+    $( document ).on( 'input', '.utilidadCot-modal', function(){
+
+        const divisa = $('.divisaCot').val();
+
+        const precioUnitarioObj = $('.precioUnitario-modal')
+        let costoUnitario =  formatMoneyToDecimal( $('.costoUnitario-modal').val() );
+        let utilidad = formatMoneyToDecimal( $( this ).val() );
+
+        costoUnitario = isNaN( costoUnitario ) ? 0 : costoUnitario;
+        utilidad = isNaN( utilidad ) ? 0 : utilidad;
+
+        utilidad = costoUnitario * ( utilidad / 100 );
+
+        const precioUnitario = costoUnitario + utilidad;
+
+        precioUnitarioObj.val( formatterMoney( divisa, precioUnitario ) );
+
+    });
+
+    $( document ).on( 'input', '.costoUnitario-modal', function(){
+
+        const divisa = $('.divisaCot').val();
+
+        const precioUnitarioObj = $('.precioUnitario-modal')
+        let costoUnitario =  formatMoneyToDecimal( $( this ).val() );
+        let utilidad = formatMoneyToDecimal( $('.utilidadCot-modal').val() );
+
+        utilidad = isNaN( utilidad ) ? 0 : utilidad;
+        costoUnitario = isNaN( costoUnitario ) ? 0 : costoUnitario;
+
+        utilidad = costoUnitario * ( utilidad / 100 );
+
+        const precioUnitario = costoUnitario + utilidad;
+
+        precioUnitarioObj.val( formatterMoney( divisa, precioUnitario ) );
+
+    });
+
+    $( document ).on( 'select2:close', '.proveedor', function(){
+
+        $('#table-productos').data({ last: null });
+
+    });
+
+    $('#btn-precios-tab').click( async function(){
+
+        const uuid = getParam( 'uuid' );
+
+        var date = new Date();
+        var minutes = 30;
+        date.setTime(date.getTime() + (minutes * 60 * 1000));
+
+        const uuidVenta = getParam('uuid');
+
+        const res = await asyncPostAjax( '/calcularTotalesCotizacion', { uuidVenta, optionNumber } );
+
+        Cookies.set(`tab-${uuid}`, 'precios', { expires: date });
+
+        $('#table-productos > tbody > tr.details > td.details-control').click();
+
+    });
+
+    $('#btn-tiempos-entrega-tab').click( function(){
+
+        const uuid = getParam( 'uuid' );
+
+        var date = new Date();
+        var minutes = 30;
+        date.setTime(date.getTime() + (minutes * 60 * 1000));
+
+        Cookies.set(`tab-${uuid}`, 'tiempos-entrega', { expires: date });
+
+        loadTiempoEntrega();
+
+    });
+
+    $('#vistaPreviaTabBtn').click( async function(){
+
+        /*Añade coockie de la tab*/
+        const uuid = getParam( 'uuid' );
+
+        var date = new Date();
+        var minutes = 30;
+        date.setTime(date.getTime() + (minutes * 60 * 1000));
+
+        Cookies.set(`tab-${uuid}`, 'resumen', { expires: date });
+
+        const hasData = await calculateVistaPrevia();
+
+        if( !hasData ){
+
+            $('#modal-no-vista-previa').modal('show');
+            $('#pdf-container').addClass('hide');
+            $('#container-spinner').addClass('hide');
+
+        }
+
+    });
+
+    $('#btn-fletes-tab').click( async function(){
+
+        const uuid = getParam( 'uuid' );
+
+        var date = new Date();
+        var minutes = 30;
+        date.setTime(date.getTime() + (minutes * 60 * 1000));
+
+        Cookies.set(`tab-${uuid}`, 'fletes', { expires: date });
+
+        await loadFletes();
+
+    });
+
+    $('#regresar-solicitud-btn').on( 'click', function(){
+
+        $('#regresar-solicitud').modal('show');
+
+    });
+
+    $('#confirmar-regresar-soli-btn').on( 'click', async function(){
+
+        const uuidVenta = getParam( 'uuid' );
+
+        const result = await asyncPostAjax( '/regresarSolicitud', { uuidVenta } );
+
+        const { Type } = result.Response;
+
+        if( Type == 'success' ){
+
+            location.reload();
+
+        }
+
+    });
+
+    $('#eliminar-cotizacion-prod').click( async function(){
+
+        const { uuid: uuidProduct, rowIndex } = $('#cotizar-producto-modal').modal().data();
+        const uuidVenta = getParam('uuid');
+
+        const res = await asyncPostAjax( '/borrarCotizacionProd', { uuidProduct, uuidVenta, optionNumber } );
+
+        const { respuesta, descripcion, uuid, proveedor, proveedorUuid } = res;
+
+        console.log({ descripcion, uuid, proveedor, proveedorUuid })
+
+        showNotification( respuesta.Response.Type, respuesta.Response.Message );
+
+        let prevData = $('#table-productos').DataTable().row( `#table-productos tbody tr:eq(${ rowIndex })` ).data();
+        prevData.btnCotizar = '<button type="button" id="generar-cotizacion-prod" class="btn btn-success btn-style-light">Cotizar</button>';
+        prevData.statusBadge = '<h6><span class="badge badge-style-light badge-danger">No cotizada</span></h6>';
+
+        delete prevData.proveedor;
+        delete prevData.proveedorUuid;
+        delete prevData.costoUnitario;
+        delete prevData.utilidad;
+        delete prevData.precioUnitario;
+        delete prevData.descripcion;
+        delete prevData.uuid;
+
+        const newData = {
+
+            ...prevData,
+            descripcion,
+            uuid,
+
+        };
+
+        console.log({ newData });
+
+        $('#table-productos').DataTable().row( `#table-productos tbody tr:eq(${ rowIndex })` ).data( newData );
+
+        clearModalAndClose( '#editar-cotizacion-modal', '#form-cot-prod' );
+
+    });
+
+    $( document ).on( 'click', '.editar-cotizacion-prod', function(){
+
+        $('#editar-cotizacion-modal').modal('show');
+
+        const rowIndex = $( this ).closest('tr').index();
+
+        const { proveedorUuid, proveedor, costoUnitario, utilidad, precioUnitario, uuid } = $('#table-productos').DataTable().rows().data()[ rowIndex ];
+
+        console.log({ proveedor, proveedorUuid })
+
+        var newOption = new Option( proveedor, proveedorUuid, false, false);
+        $('#proveedor-select-edit').append( newOption ).trigger('change');
+
+        $('.costoUnitario-modal').val( costoUnitario );
+        $('.utilidadCot-modal').val( utilidad );
+        $('.precioUnitario-modal').val( precioUnitario );
+
+        $('#cotizar-producto-modal').modal().data({ uuid, rowIndex });
+
+    });
+
+    $('#form-editar-cot-prod').submit( async function( e ){
+
+        e.preventDefault();
+
+        const { uuid, uuidProductoSeleccionado } = $('#cotizar-producto-modal').data();
+        const uuidVenta = getParam('uuid');
+
+        const disabled = $(this).find(':input:disabled').removeAttr('disabled');
+
+        const serializedData = $(this).serializeArray();
+
+        let formObj = {};
+
+        for( const data of serializedData ){
+
+            const { name, value } = data;
+
+            formObj[ name ] = value;
+
+        }
+
+        formObj = {
+
+            ...formObj,
+            uuid, 
+            uuidVenta,
+            optionNumber,
+
+        };
+
+        disabled.prop( 'disabled', true );
+
+        const res = await asyncPostAjax( '/editarCotizacion', formObj );
+
+        const { Response } = res.respuesta;
+
+        if( Response.Type == 'success' ){
+
+            const cotizacion = res.cotizacion;
+
+            const { rowIndex } = $('#cotizar-producto-modal').data();
+
+            let oldData = $('#table-productos').DataTable().row( rowIndex ).data();
+
+            oldData = { 
+
+                ...oldData,
+                ...cotizacion,
+
+            };   
+
+            $('#table-productos').DataTable().row( rowIndex ).data( oldData );
+
+            $('#editar-cotizacion-modal').modal('hide');
+
+        }
+
+        showNotification( Response.Type, Response.Message );
+
+    }); 
+
+    $( document ).on( 'click', '#generar-cotizacion-prod', function(){
+
+        const divisa = $('.divisaCot').val();
+
+        if( !divisa ){
+
+            showNotification( 'warning', 'Debes de seleccionar primero una divisa antes de cotizar un producto' );
+            return;
+
+        }
+
+        clearModalAndClose( '#cotizar-producto-modal', '#form-cot-prod', false );
+
+        if( $('#checkbox-prod-no-hist')[0].checked ) $('#checkbox-prod-no-hist').click();
+        $('#descripcion-interna').prop('disabled', false);
+        $('#referencia-cot').prop('disabled', false);
+        $('#unidadMedida').prop('disabled', false);
+        $('#unidadMedida').val( null ).trigger('change');
+        $('#collapse-fields-prod-cot').collapse('hide');
+
+        $('.precioUnitario-modal').prop( 'disabled', true );
+
+        const rowIndex = $( this ).parent().parent().index();
+
+        const rowData = $('#table-productos').DataTable().rows().data()[ rowIndex ];
+
+        const { uuid, unidadMedidaNombre, unidadMedidaUuid, descripcionCliente } =  rowData;
+
+        $('#nombre-del-producto-cot').text( descripcionCliente );
+
+        searchProduct( descripcionCliente );
+
+        const newOption = new Option( unidadMedidaNombre, unidadMedidaUuid, false, false);
+        $('#unidadMedida').append( newOption ).trigger('change');
+
+        $('#tab-cot-prod').removeClass( 'pe-none' );
+        $('#historial-tab').click();
+        $('#tab-cot-prod').addClass( 'pe-none' );
+
+        $('#atras-cotizacion-btn').addClass( 'hide' );
+        $('#cotizar-producto-btn').addClass('hide');
+        $('#atras-cotizacion-btn').addClass('hide');
+
+        $( '#siguiente-cotizacion-btn' ).removeClass('hide');
+
+        $('#cotizar-producto-modal').modal('show');
+        $('#cotizar-producto-modal').modal().data({ uuid, mode: 'nuevo', rowIndex });
+
+    });
+
+    $( document ).ready( async function(){
+
+        const uuidVenta = getParam('uuid');
+
+        if( optionNumber ){
+
+            $('#reenviar-btn-container').remove();
+            $('#editar-btn-container').remove();
+            $('#declinar-btn-container').remove();
+
+        }
+
+        const { lugarDeEntregaName: lugarDeEntrega, lugarDeEntrega: uuidLugarDeEntrega, localizacion } = await asyncPostAjax( '/getLugarDeEntrega', { uuidVenta } );
+
+        $('#card-container').data({ lugarDeEntrega, uuidLugarDeEntrega, divisa, localizacion });
+
+        $(".fleteInfoEntrega").val( lugarDeEntrega );
+
+        if( localizacion == 'Dentro de la Republica' ){
+
+            $('#flete-dentro-cb').prop( 'checked',true );
+        
+        }else{
+
+            $('#flete-frontera-cb').prop( 'checked', true );
+
+        }
+
+        $('#flete-frontera-cb').prop( 'disabled', true );
+        $('#flete-dentro-cb').prop( 'disabled', true );
+
+        Object.keys( divisa ).length === 0 ? null : $('.divisaCot').val( divisa ).trigger('change');
+
+        $(".fleteInfoEntrega").prop( 'disabled', true );
+
+        const prodsObj = {};
+
+        for( const prod of productos ){
+
+            const { uuid } = prod;
+
+            prodsObj[ uuid ] = prod;
+
+        }
+
+        $('#card-container').data({ productos: prodsObj });
+        $('#card-container').data({ fletes: [] });
+        $('#card-container').data({ cotizacion: { ...cotizacion, optionNumber } });
+
+        const uuid = getParam('uuid');
+
+        const cookieTab = Cookies.get(`tab-${uuid}`);
+
+        console.log({ cookieTab })
+
+        switch ( cookieTab ) {
+            case 'precios':
+                await loadFletes();
+                $('#btn-precios-tab').click();
+                break;
+            case 'fletes':
+                $('#btn-fletes-tab').click();
+                break;
+            case 'resumen':
+                await loadFletes();
+                $('#vistaPreviaTabBtn').click();
+                break;
+            case 'tiempos-entrega':
+                await loadTiempoEntrega();
+                $('#btn-tiempos-entrega-tab').click();
+                break;
+            default:
+                $('#btn-precios-tab').click();
+                break;
+        }
+
+        const vigencia = await asyncPostAjax( '/getVigencia', { uuidVenta, optionNumber } );
+
+        $('#card-container').data({ vigencia });
+        $('#vigenciaDays').val( vigencia );
+
+        const productosSelect = await $('#table-productos').DataTable().rows().data().toArray();
+
+        $('#productSelectCot-edit').empty();
+
+        for( const prodData of productosSelect ){
+
+            const { descripcion, uuid: uuidProducto } = prodData;
+
+            $('#productSelectCot-edit').append(new Option( descripcion, uuidProducto));
+            $('#select-productos-otros-edit').append(new Option( descripcion, uuidProducto));
+
+        }
+
+    });
+
+    $('#tipo-gasto-group input[type="radio"]').on('change', function(e) {
+        const tipogasto = $(this).attr('id');
+        if(tipogasto == "tipo-gasto-flete"){
+            $("#flete-collapse").show();
+            $("#otro-collapse").hide();
+        }else{
+            $("#flete-collapse").hide();
+            $("#otro-collapse").show();
+        }
+    });
+
+    $('#tipo-gasto-group-edit input[type="radio"]').on('change', function(e) {
+
+        const tipogasto = $(this).attr('id');
+        if(tipogasto == "tipo-gasto-flete-edit"){
+            $("#flete-collapse-edit").show();
+            $("#otro-collapse-edit").hide();
+        }else{
+            $("#flete-collapse-edit").hide();
+            $("#otro-collapse-edit").show();
+        }
+    });
+
+
+
+/*comentarios*/
+$( document ).on('click','#btnOpcionComentario' ,async function(e){
+
+    const uuidVenta = getParam('uuid');
+
+    cargarComentarios ( uuidVenta );
+
+});
+
+
+
+$("#resendMail").click(async function(e){
+
+    const buttonDom = $(e.target);
+    const button = new loadingButton(buttonDom,"...Reenviando");
+    button.start();
+    const urlParams = new URLSearchParams(window.location.search);
+    const uuidVenta = getParam('uuid')
+
+
+    const data = {
+        uid_solicitud: uuidVenta,
+
+
+    }
+
+    const {Response} = await asyncPostAjax('/solicitudes/clientemail',data);
+    showNotification(Response.Type,Response.Message)
+    button.stop();
+})
+
+
+$("#addNewMail").click(function(){
+    const mail = $("#newmailInput").val();
+    if(mail && isValidEmail(mail)){
+        const listRow = document.createElement("li");
+        $(listRow).addClass("list-group-item d-flex justify-content-between")
+        const html =    `<span>${mail}</span>
+        
+                        <span class="material-icons-outlined remove text-danger">
+                        remove
+                        </span>
+        `
+        $(listRow).html(html);
+        $(listRow).data('mail',mail)
+
+        let mailArray = $("#mailList").data("mailList") ?? [];
+        mailArray.push(mail)
+        console.log({mailArray})
+        $("#mailList").data("mailList",mailArray); //Se almacena el array de correos introducidos
+
+
+        $("#mailList").append(listRow);
+        $("#newmailInput").val("");
+        $("#newmailInput").focus();
+
+
+    }
+})
+
+$("#mailList").on("click",".remove",function(e){
+    console.log("eliminar",e.target,e.delegateTarget);
+    const li = $(e.target).closest("li");
+    let nodes = Array.from( li.closest('ul').children() ); // get array
+    const index = li.index();
+    var mails = $(e.delegateTarget).data("mailList");
+   
+    mails.splice(index,1)
+    $(e.delegateTarget).data("mailList",mails)
+    $(li).remove();
+       
+
+});
+
+$("#isSendMail").on("change",function(e){
+    const isChecked = $(this).is(":checked");
+    if(isChecked){
+        $("#mailList").empty();
+        $("#mailList").data("mailList",undefined);
+        $("#newmailInput").prop("disabled",true);
+        $("#addNewMail").prop("disabled",true);
+
+    }else{
+        $("#newmailInput").prop("disabled",false);
+        $("#addNewMail").prop("disabled",false);
+    }
+
+})
+
+$("#newmailInput").on('keyup', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        $("#addNewMail").click();
+    }
+});
+
+//Eventos de reenviar correo
+
+
+
+$("#R_addNewMail").click(function(){
+    const mail = $("#R_newmailInput").val();
+    if(mail && isValidEmail(mail)){
+        const listRow = document.createElement("li");
+        $(listRow).addClass("list-group-item d-flex justify-content-between")
+        const html =    `<span>${mail}</span>
+        
+                        <span class="material-icons-outlined remove text-danger">
+                        remove
+                        </span>
+        `
+        $(listRow).html(html);
+        $(listRow).data('mail',mail)
+
+        let mailArray = $("#R_mailList").data("mailList") ?? [];
+        mailArray.push(mail)
+        console.log({mailArray})
+        $("#R_mailList").data("mailList",mailArray); //Se almacena el array de correos introducidos
+
+
+        $("#R_mailList").append(listRow);
+        $("#R_newmailInput").val("");
+        $("#R_newmailInput").focus();
+
+
+    }
+})
+
+
+$("#R_mailList").on("click",".remove",function(e){
+    console.log("eliminar",e.target,e.delegateTarget);
+    const li = $(e.target).closest("li");
+    let nodes = Array.from( li.closest('ul').children() ); // get array
+    const index = li.index();
+    var mails = $(e.delegateTarget).data("mailList");
+   
+    mails.splice(index,1)
+    $(e.delegateTarget).data("mailList",mails)
+    $(li).remove();
+       
+
+});
+
+
+$("#R_newmailInput").on('keyup', function (e) {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+        $("#addNewMail").click();
+    }
+});
+
+
+$("#reenviarCorreoModal").on("click",".confirm",async function(e){
+    let mailArray = $("#R_mailList").data("mailList") ?? [];
+    let mensajeExtra = $("#R_mensajeExtra").val();
+    console.log(mensajeExtra)
+
+    const buttonDom = $(e.target);
+    const loadingBtn = new loadingButton(buttonDom,"...Enviando Email");
+    loadingBtn.start();
+
+    const uuid = getParam( 'uuid' );
+    const {Response} = await asyncPostAjax('/ventas/mail/solicitudconfirmacion',{uuidVenta:uuid, mailListing : mailArray,mensajeExtra})
+    showNotification(Response.Type,Response.Message);
+
+    $(e.delegateTarget).modal("hide");
+    loadingBtn.stop();
+
+    
+});
+
+
+$("#prepararCotizacion .confirm").click(async function(e){
+    const uuidVenta = getParam('uuid');
+
+    const {Response} = await asyncPostAjax(`/ventas/preparar-cotizar`,{uuidVenta});
+    
+});
+
+</script>
