@@ -41,3 +41,20 @@ onValue( imc_ref, (snapshot) => {
   const data = snapshot.val();
   console.log({data})
 });
+
+$("#weight-range").on( "input", function(e){
+  const value = $(this).val();
+  $("#weight-input").attr( "readonly", false )
+  $("#weight-input").val(`${value}   kg`)
+  $("#weight-input").attr( "readonly", "readonly" );
+});
+$("#height-range").on( "input", function(e){
+  const value = $(this).val();
+  $("#height-input").attr( "readonly", false )
+  $("#height-input").val(`${value}   mt`)
+  $("#height-input").attr( "readonly", "readonly" );
+});
+$('.avatar-btn').on('click', function(e){
+  $(".avatar-btn").each( ( index, elm ) => $(elm).find("img").removeClass("selected") );
+  $(this).find("img").addClass("selected");
+});

@@ -1,4 +1,115 @@
-IMC view
+<div class="content-wrapper">
+    <div class="container">
+        <div class="row">
+            <div class="col-md-12">
+                <h2>Calculadora de IMC</h2>
+                <p>El Índice de Masa Corporal (IMC) es una medida de asociación entre el peso y la talla de una persona. El IMC es usado como uno de varios indicadores para evaluar el estado nutricional.</p>
+                <p>El IMC constituye la medida poblacional más útil del sobrepeso y la obesidad, pues la forma de calcularlo no varía en función del sexo ni de la edad en la población adulta. No obstante, debe considerarse como una guía aproximativa, pues puede no corresponder al mismo grado de gordura en diferentes individuos.</p>
+                <p>La Organización Mundial de la Salud, ha propuesto una clasificación del estado nutricional dependiendo del IMC de una persona.</p>
+            </div>
+            <gap style="height: 35px; width: 100%;"></gap>
+            <div class="col-md-6 card m-auto">
+                <form id="imc-form" class="row" style="padding: 20px;">
+                    <div class="col-md-6">
+                        <div class="row pb-4">
+                            <div class="col-6 d-flex justify-content-center">
+                                <div class="avatar avatar-xxl avatar-rounded avatar-btn">
+                                    <img class="input-select man" src="../assets/images/avatars/avatar-h.png" alt="">
+                                </div>
+                            </div>
+                            <div class="col-6 d-flex justify-content-center">
+                                <div class="avatar avatar-xxl avatar-rounded avatar-btn">
+                                    <img class="input-select woman" src="../assets/images/avatars/avatar-m.png" alt="">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-5">
+                                <label class="label-input">Peso (Kg)</label>
+                            </div>
+                            <div class="col-7">
+                                <input id="weight-input" class="value-input" name="weight" readonly="readonly" type="text" value="30   kg">
+                            </div>
+                            <div class="col-md-12">
+                                <div class="slidecontainer pt-4">
+                                    <input type="range" min="30" max="170" value="30" class="slider" id="weight-range">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-5">
+                                <label class="label-input">Altura (Mt)</label>
+                            </div>
+                            <div class="col-7">
+                                <input id="height-input" class="value-input" name="height" readonly="readonly" type="text" value="1   mt">
+                            </div>
+                            <div class="col-md-12">
+                                <div class="slidecontainer pt-4">
+                                    <input type="range" min="1" max="2.2" value="1" step=".01" class="slider" id="height-range">
+                                </div>
+                            </div>
+                        </div>  
+                    </div>
+                    <div class="col-6 hidden-on-mobile">
+                        <div class="card">
+                            <div class="card-header">¿Cómo se mide el IMC?</div>
+                            <div class="card-text">
+                                La fórmula del IMC es el peso en kilógramos dividido por el cuadrado de la altura en metros (kg/m2). El IMC es una indicación simple de la relación entre el peso y la talla que se utiliza frecuentemente para identificar el sobrepeso y la obesidad en los adultos, tanto a nivel individual como poblacional.
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+<style>
+img.selected{
+    border: #32d355 solid 3px; 
+}
+.avatar.avatar-xxl.avatar-rounded.avatar-btn:hover img{
+    border: #32d355 solid 3px;
+    cursor: pointer;
+}
+.label-input{
+    font-size: 16px;
+}
+.value-input{
+    width: 80px;
+    background-color: #f1f1f1;
+    border: 1px solid #e4e4e6;
+    border-radius: 5px;
+    pointer-events: none;
+}
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 15px;
+  border-radius: 5px;  
+  background: white;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
 
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%; 
+  background: #2269f5;
+  cursor: pointer;
+}
 
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #2269f5;
+  cursor: pointer;
+}
+</style>
 <script src="../assets/js/pages/imc.js" type="module"></script>
