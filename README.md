@@ -1,6 +1,4 @@
 
-![Logo](https://oducal.com/storage/universities/oducal_universidad_1581120699.png)
-
 
 # ULSA WEB APP
 A Node.js - express/ejs based app that calculates the Body mass index (BIM) made for the ULSA Laguna university.
