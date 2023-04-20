@@ -6,11 +6,6 @@
 A Node.js - express/ejs based app that calculates the Body mass index (BIM) made for the ULSA Laguna university.
 
 
-## Author
-
-- [@Gambster](https://www.github.com/gambster)
-
-
 ## Run Locally
 
 Clone the project
@@ -36,4 +31,9 @@ Start the server
 ```bash
   npm run start
 ```
+
+
+## Author
+
+- [@Gambster](https://www.github.com/gambster)
 
