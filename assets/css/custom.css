@@ -1,1 +1,4 @@
 /* Your Custom CSS Goes here */
+.hide{
+    display: none !important;
+}

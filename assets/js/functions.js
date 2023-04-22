@@ -18,4 +18,12 @@ const uuidv4 = () => {
         (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
     );
 }
-  
+
+const round = (value, precision) => {
+    var multiplier = Math.pow(10, precision || 0);
+    return Math.round(value * multiplier) / multiplier;
+}
+
+const timeout = (ms) => {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}

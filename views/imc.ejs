@@ -11,43 +11,58 @@
             <div class="col-md-6 card m-auto">
                 <form id="imc-form" class="row" style="padding: 20px;">
                     <div class="col-md-6">
-                        <div class="row pb-4">
-                            <div class="col-6 d-flex justify-content-center">
-                                <div class="avatar avatar-xxl avatar-rounded avatar-btn">
-                                    <img class="input-select man" src="../assets/images/avatars/avatar-h.png" alt="">
+                        <div id="container-form-inputs">
+                            <div class="row pb-4">
+                                <div class="col-6 d-flex justify-content-center">
+                                    <div class="avatar avatar-xxl avatar-rounded avatar-btn">
+                                        <img class="input-select man" src="../assets/images/avatars/avatar-h.png" alt="">
+                                    </div>
+                                </div>
+                                <div class="col-6 d-flex justify-content-center">
+                                    <div class="avatar avatar-xxl avatar-rounded avatar-btn">
+                                        <img class="input-select woman" src="../assets/images/avatars/avatar-m.png" alt="">
+                                    </div>
                                 </div>
                             </div>
-                            <div class="col-6 d-flex justify-content-center">
-                                <div class="avatar avatar-xxl avatar-rounded avatar-btn">
-                                    <img class="input-select woman" src="../assets/images/avatars/avatar-m.png" alt="">
+                            <div class="row">
+                                <div class="col-5">
+                                    <label class="label-input">Peso (Kg)</label>
+                                </div>
+                                <div class="col-7">
+                                    <input id="weight-input" class="value-input" name="weight" readonly="readonly" type="text" value="30   kg">
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="slidecontainer pt-4">
+                                        <input type="range" min="30" max="170" value="30" class="slider" id="weight-range">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-5">
+                                    <label class="label-input">Altura (Mt)</label>
+                                </div>
+                                <div class="col-7">
+                                    <input id="height-input" class="value-input" name="height" readonly="readonly" type="text" value="1   mt">
+                                </div>
+                                <div class="col-md-12">
+                                    <div class="slidecontainer pt-4">
+                                        <input type="range" min="1" max="2.2" value="1" step=".01" class="slider" id="height-range">
+                                    </div>
+                                </div>
+                                <div class="col-12-md d-flex justify-content-center pt-3">
+                                    <button class="btn btn-primary">Calcular</button>
                                 </div>
                             </div>
                         </div>
-                        <div class="row">
-                            <div class="col-5">
-                                <label class="label-input">Peso (Kg)</label>
-                            </div>
-                            <div class="col-7">
-                                <input id="weight-input" class="value-input" name="weight" readonly="readonly" type="text" value="30   kg">
-                            </div>
-                            <div class="col-md-12">
-                                <div class="slidecontainer pt-4">
-                                    <input type="range" min="30" max="170" value="30" class="slider" id="weight-range">
+                        <div id="container-result" class="pt-4 hide">
+                            <div class="bmi-bar">
+                                <div id="bmi-bargraph" class="bmi-score">
+                                    <p class="mb-0">Tu IMC: <span id="bmi-score-p">17.8</span></p>
                                 </div>
+                                <img src="../assets/images/other/graph-result-bim.png" style="width: 100%;" alt="" srcset="">
                             </div>
-                        </div>
-                        <div class="row">
-                            <div class="col-5">
-                                <label class="label-input">Altura (Mt)</label>
-                            </div>
-                            <div class="col-7">
-                                <input id="height-input" class="value-input" name="height" readonly="readonly" type="text" value="1   mt">
-                            </div>
-                            <div class="col-md-12">
-                                <div class="slidecontainer pt-4">
-                                    <input type="range" min="1" max="2.2" value="1" step=".01" class="slider" id="height-range">
-                                </div>
-                            </div>
+                            <p style="text-align: justify;">Tu peso ideal debería de estar entre <span id="min-rec-weight"></span>kg y <span id="max-rec-weight"></span>kg.</p>
+                            <p id="bim-text-info" class="pt-4" style="text-align: justify;"></p>
                         </div>  
                     </div>
                     <div class="col-6 hidden-on-mobile">
@@ -59,11 +74,45 @@
                         </div>
                     </div>
                 </form>
+                
             </div>
         </div>
     </div>
 </div>
 <style>
+.low-weight-res{
+    left: -6%;
+}
+.healthy-res{
+    left: 18%;
+}
+.over-weight-res{
+    left: 46%;
+}
+.obesity-res{
+    left: 72%;
+}
+.bmi-score::after {
+  border-color: #aaa transparent transparent transparent;
+  border-style: solid;
+  border-width: 5px 2.5px 0 2.5px;
+  bottom: -.6em;
+  left: 48px;
+  content: '';
+  height: 0;
+  position: absolute;
+  width: 0;
+}
+.bmi-score {
+  background: #fff;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  max-width: 99px;
+  padding: .5em .7em;
+  position: relative;
+  top: -1em;
+}
+
 img.selected{
     border: #32d355 solid 3px; 
 }
