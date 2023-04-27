@@ -1,13 +1,6 @@
-// Import the functions you need from the SDKs you need
-
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9.20.0/firebase-app.js";
 import { getDatabase, ref, onValue, set, onChildAdded  } from "https://www.gstatic.com/firebasejs/9.20.0/firebase-database.js"
-// TODO: Add SDKs for Firebase products that you want to use
 import bim_results from "../../../constants/imc-results-position.js";
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-
-// Your web app's Firebase configuration
 
 const firebaseConfig = {
 
@@ -31,45 +24,6 @@ let imc_flag = true;
 const app = initializeApp(firebaseConfig);
 
 const database = getDatabase(app);
-const imc_ref = ref(database, '/imc/' );
-let docs_length = 0
-let i = 0;
-const init_socket = ( async ()=> {
-  console.log('init')
-  await init_socket_value();
-  console.log('next')
-  await init_socket_child();
-  
-  
-});
-const init_socket_child = async() => {
-  onChildAdded( imc_ref, (snapshot) => {
-    i++;
-    if( i <= docs_length ){
-        return;
-    }
-    const data = snapshot.val();
-    console.log({data});
-  });
-  return true;
-};
-const init_socket_value = async () => {
-  onValue( imc_ref, snapshot => {
-    
-    if( imc_flag === false ){
-        return;
-    }
-    imc_flag = false;
-    const data = snapshot.val();
-    docs_length = Object.keys( data ).length;
-  });
-  await timeout( 500 );
-  return true;
-
-};
-
-init_socket();
-
 
 $("#weight-range").on( "input", function(e){
   const value = $(this).val();
@@ -140,4 +94,18 @@ $('#imc-form').submit( function( e ){
   });
 
 
+});
+
+$("#volver-calcular-btn").on( "click", function(){
+
+  $(".selected").removeClass("selected");
+
+  $("#weight-range").val(30);
+  $("#weight-input").val(30);
+
+  $("#height-range").val(1);
+  $("#height-input").val(1);
+
+  $("#container-form-inputs").removeClass("hide");
+  $("#container-result").addClass("hide");
 });

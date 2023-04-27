@@ -1,6 +1,8 @@
 const imcView = (req, res)=>{
+    const { reports } = req.query;
 
-    res.render('imc')
+    if( reports ) res.render('reports')
+    else res.render('imc');
     
 }
 
