@@ -7,7 +7,7 @@ const {imcView, } = require('../controllers/imc')
        
 const router = express.Router()
 
-router.get('/', mainView)
+router.get('/', imcView)
 router.get('/imc', imcView)
 
 
